@@ -1,0 +1,3968 @@
+# Altana
+
+> Noncustodial authorization infrastructure for agentic workflows. Give agents provable, revocable authority to act onchain, scoped by policy you control and verifiable by anyone.
+
+## Acknowledgments
+
+The Altana SDK builds on [Porto](https://porto.sh) (MIT), extended for Keystore compatibility. Credit to the Porto team for that work.
+
+Altana maintains the stack it runs: we operate it in production on Ethereum, BNB Chain and Base, and the layers you integrate against are ours. The SDK imports `porto` as a pinned dependency rather than forking it, so the surface you build on is one we control.
+
+
+## Changelog
+
+These docs describe **`@altananetwork/sdk` 0.7.0** and **`@altananetwork/mcp` 0.7.0**, the current releases on npm.
+
+Both packages are pre-1.0. Minor versions may contain breaking changes. Pin an exact version if you need stability across installs.
+
+The canonical file is [`CHANGELOG.md`](https://github.com/altananetwork/altana-sdk/blob/main/CHANGELOG.md) in the SDK repo.
+
+### 0.7.0
+
+Released 4 August 2026. `@altananetwork/mcp` 0.7.0.
+
+**Added**
+
+* **Skills registry discovery in the MCP server.** [`search_skills`](/mcp/tools) searches the registry by name, description, and tags. `get_skill` fetches a skill's full playbook, integrity checked against the registry's `sha256` before it is returned, so a tampered playbook is rejected rather than followed. See [Skills Registry](/skills).
+
+**Fixed**
+
+* **B402 envelope compatibility.** The [x402](/sdk/x402) client and server now speak the B402 envelope dialect on both sides, fixing payments against BNB-chain sellers that expect it.
+
+### 0.6.0
+
+Released 16 July 2026. `@altananetwork/mcp` 0.5.0.
+
+**Added**
+
+* **[ERC-8183 buyer support](/sdk/erc8183).** Hire BNB Agent Studio seller agents from an Altana wallet: escrow, job status, and settlement as one atomic relay intent. Available in the SDK and as the `erc8183_*` MCP tools.
+* **[`@altananetwork/x402-server`](/sdk/x402-server).** Seller-side x402/B402 package: payment challenges, verification, and on-chain settlement.
+
+### 0.5.0
+
+Released 14 July 2026. `@altananetwork/mcp` 0.4.0.
+
+**Added**
+
+* **[BNB testnet support](/concepts/networks/testnet)** (chain 97).
+* **Optional session-key Keystore registration.** [`grantSession`](/sdk/grant-session) takes a `register` flag, on by default; `registerSessionKey` registers a key later.
+* **[ERC-20 balances](/sdk/balances) with BEP-677 support.** Scaled-UI-amount tokens are detected via ERC-165 and their display value is scaled, leaving the raw on-chain amount untouched.
+
+### 0.4.0
+
+Released 14 July 2026. `@altananetwork/mcp` 0.3.0.
+
+**Added**
+
+* **[x402 payments](/sdk/x402).** Pay HTTP payment challenges with a session key over Permit2 or EIP-3009, including the B402 permit2-exact witness rail.
+* **[ERC-1271 signature verification](/concepts/off-chain-signatures)** for smart-account wallets.
+
+### 0.3.3
+
+Released 8 July 2026. First public release: agentic wallets, session keys, the [Keystore](/concepts/keystore) registry, the [MCP servers](/mcp), and this documentation site.
+
+Entries for 0.6.0 and earlier were reconstructed from commit history after the fact, so they summarize what shipped rather than itemizing every change.
+
+
+## Why Altana
+
+Altana enables a **global registry of permissions onchain, accessible by any agent**.
+
+Traditional agentic wallets store permissions locally or in centralized servers.<br />Altana's **Keystore** infrastructure makes composable permissions accessible across any chain and any wallet, enabling:
+
+<table style={{display:'block',borderCollapse:'collapse',overflowX:'auto',marginBottom:'var(--vocs-space_24)'}}>
+  <tbody>
+    <tr>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',fontWeight:'700',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top',width:'30%'}}>Agent-to-agent verification</td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Two AIs acting on the same wallet can verify each other's authority onchain. No platform in between.</td>
+    </tr>
+
+    <tr style={{backgroundColor:'var(--vocs-color_background2)'}}>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',fontWeight:'700',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Cross-app authorization</td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Any DEX, orderbook, or protocol can read whether an agent is authorized, without integrating with the specific wallet vendor.</td>
+    </tr>
+
+    <tr>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',fontWeight:'700',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>A new class of agent services</td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Users hire AI agents through onchain employment contracts. Anyone can verify what an agent is allowed to do, and revoke is one transaction.</td>
+    </tr>
+  </tbody>
+</table>
+
+[See how Altana compares](/concepts/comparison)
+
+### What Altana solves
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', margin: '1.5rem 0 3rem' }}>
+  <div style={{ padding: '1.5rem', border: '1px solid var(--vocs-color_border)', borderRadius: '8px' }}>
+    <p style={{ fontWeight: '700', fontSize: '1rem', margin: '0 0 0.5rem', color: 'var(--vocs-color_heading)' }}>Permissions without a middleman</p>
+    <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--vocs-color_text2)', margin: 0 }}>Authorization rules live onchain, not in a vendor's database. Any protocol can verify whether an agent is allowed to act, with no integration required.</p>
+  </div>
+
+  <div style={{ padding: '1.5rem', border: '1px solid var(--vocs-color_border)', borderRadius: '8px' }}>
+    <p style={{ fontWeight: '700', fontSize: '1rem', margin: '0 0 0.5rem', color: 'var(--vocs-color_heading)' }}>Policy enforced before every transaction</p>
+    <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--vocs-color_text2)', margin: 0 }}>Spend caps, contract allowlists, and expiry windows are validated at the execution layer, not in application code that can be bypassed.</p>
+  </div>
+
+  <div style={{ padding: '1.5rem', border: '1px solid var(--vocs-color_border)', borderRadius: '8px' }}>
+    <p style={{ fontWeight: '700', fontSize: '1rem', margin: '0 0 0.5rem', color: 'var(--vocs-color_heading)' }}>Self-custodial by architecture</p>
+    <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--vocs-color_text2)', margin: 0 }}>The user signs. The user revokes. Altana never holds keys. Grant or revoke in one transaction, with no support ticket and no counterparty risk.</p>
+  </div>
+</div>
+
+### Who it's for
+
+<div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', margin: '1.5rem 0 3rem' }}>
+  <div style={{ padding: '1.5rem', background: 'var(--vocs-color_background2)', borderRadius: '8px' }}>
+    <p style={{ fontWeight: '700', fontSize: '1rem', margin: '0 0 0.5rem', color: 'var(--vocs-color_heading)' }}>App developers</p>
+    <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--vocs-color_text2)', margin: 0 }}>Ship agentic features with a wallet your users actually control. Give an agent a scoped key, not full custody, and let the chain enforce the limit.</p>
+  </div>
+
+  <div style={{ padding: '1.5rem', background: 'var(--vocs-color_background2)', borderRadius: '8px' }}>
+    <p style={{ fontWeight: '700', fontSize: '1rem', margin: '0 0 0.5rem', color: 'var(--vocs-color_heading)' }}>AI agent builders</p>
+    <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--vocs-color_text2)', margin: 0 }}>Equip your agent with a wallet and a capped, revocable session. The agent operates within the bounds the user set, and those bounds are publicly verifiable.</p>
+  </div>
+
+  <div style={{ padding: '1.5rem', background: 'var(--vocs-color_background2)', borderRadius: '8px' }}>
+    <p style={{ fontWeight: '700', fontSize: '1rem', margin: '0 0 0.5rem', color: 'var(--vocs-color_heading)' }}>Protocols and integrators</p>
+    <p style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--vocs-color_text2)', margin: 0 }}>Read agent authority from the chain before executing. Know exactly what an agent is allowed to do without trusting the agent's own claims.</p>
+  </div>
+</div>
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { useState } from 'react'
+import { UseCaseMeta } from '../../components/UseCaseMeta'
+
+export function CodeWithPlaceholder({ code }) {
+  const parts = code.split('"0xYourContract"')
+  return (
+    <div style={{margin:'1rem 0'}}>
+      <pre style={{background:'var(--vocs-color_codeBlockBackground,#f6f8fa)',padding:'1.25rem',borderRadius:'8px',overflowX:'auto',fontSize:'0.875em',lineHeight:1.7,margin:0}}>
+        <code style={{fontFamily:'var(--vocs-fontFamily_mono)'}}>
+          {parts.map((part, i) => (
+            <span key={i}>
+              {part}
+              {i < parts.length - 1 && <span style={{color:'#d97706',fontStyle:'italic'}}>&#34;0xYourContract&#34;</span>}
+            </span>
+          ))}
+        </code>
+      </pre>
+    </div>
+  )
+}
+
+export function CopyAddr({ address }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+      <code>{address}</code>
+      <button onClick={() => { navigator.clipboard.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+        title="Copy" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: copied ? '#16a34a' : 'inherit', display: 'inline-flex', alignItems: 'center' }}>
+        {copied
+          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>}
+      </button>
+    </span>
+  )
+}
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Private key: give an agent a wallet and a policy
+
+<UseCaseMeta
+  tools={['SDK', 'MCP']}
+  rows={[
+{ label: "Goal", value: "I want an AI agent that can act onchain for me, but only inside limits I set." },
+{ label: "Who it's for", value: "Everyone. This is the hello-world every other path builds on." },
+{ label: "What you'll use", value: <><code>createWallet</code>, <code>grantSession</code>, <code>execute</code>, and <code>revokeSession</code>.</> },
+{ label: "Prerequisites", value: <><a href="/getting-started/create-agentic-wallet#private-key">SDK installed</a> with a private key and BNB funds. See <a href="/sdk/bnb">BNB Smart Chain</a> to get set up.</> },
+]}
+/>
+
+***
+
+You own the wallet. The agent gets a scoped key: it can only call the contracts you allow, only up to the spend cap you set, and it expires automatically. You can cut access with one transaction at any time.
+
+### Step 1: Create your wallet
+
+This is your wallet. You're the admin. The agent never sees this key.
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+
+const wallet = await client.createWallet({ signer });
+console.log(wallet.address);
+```
+
+**Fund `wallet.address` with BNB before step 2.**
+
+### Step 2: Grant the agent a session
+
+This is the policy. You define which contracts the agent can call, the daily spend cap, and when the key expires. `grantSession` writes that policy onchain and returns a session object to hand to your agent.
+
+<CodeWithPlaceholder
+  code={`import { createPrivateKeySigner } from "@altananetwork/sdk";
+import { parseEther } from "viem";
+
+const session = await client.grantSession({
+wallet,
+signer,
+sessionSigner: createPrivateKeySigner(),                    // the agent's key — SDK generates it
+permissions: {
+  calls: [{ to: "0xYourContract" }],                        // only this contract
+  spend: [{ limit: parseEther("0.1"), period: "day" }],    // 0.1 BNB per day
+},
+expiry: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
+});`}
+/>
+
+<div style={{background:'rgba(217,119,6,0.07)',borderLeft:'3px solid rgba(217,119,6,0.6)',borderRadius:'4px',padding:'0.75rem 1rem',margin:'1rem 0',fontSize:'0.9rem',lineHeight:1.7}}>
+  <span style={{color:'#d97706',fontWeight:600}}>Replace <code style={{color:'#d97706'}}>0xYourContract</code> with your contract address.</span><br />
+  To test on BNB, try WBNB: <CopyAddr address="0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c" /> · see <a href="/use-cases/2-agent-trades-dex" style={{color:'var(--vocs-color_link)'}}>Let an agent trade on a DEX</a>.
+</div>
+
+Pass `session` to your agent process. It holds the session key; treat it like a private key.
+
+### Step 3: The agent executes
+
+The agent uses `session` to act. Your admin key is not involved.
+
+<CodeWithPlaceholder
+  code={`const result = await client.execute({
+session,
+calls: [{ to: "0xYourContract", data: "0x", value: 0n }],
+});
+
+console.log(result.status, result.transactionHash);`}
+/>
+
+A call within the policy goes through. An oversized amount or a call to a different contract reverts at the onchain validator, not at Altana's backend, at the contract itself.
+
+### Step 4: Revoke the session
+
+One call cuts the agent's access. Its next execute reverts immediately.
+
+```ts
+await client.revokeSession({ wallet, signer, session });
+```
+
+### Why it's different
+
+The policy is onchain. Any tool, block explorer, or smart contract can verify whether the session key is still active by reading the keystore directly. Nothing to trust on Altana's side.
+
+***
+
+* [Use a passkey as admin](/use-cases/1b-passkey-delegates-to-agent): the human side, a passkey wallet that delegates to an agent.
+* [Let an agent trade on a DEX](/use-cases/2-agent-trades-dex): point this session at a real DEX.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { UseCaseMeta } from '../../components/UseCaseMeta'
+import { PasskeyAgentDemo } from '../../components/PasskeyAgentDemo'
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Passkey: give an agent a wallet and a policy
+
+<UseCaseMeta
+  rows={[
+{ label: "Goal", value: "I want a wallet with no seed phrase, secured by Face ID, and I want to delegate a capped key on it to my AI." },
+{ label: "Who it's for", value: <>Consumer apps where a person holds the keys with Face ID or Touch ID. It parallels <a href="/use-cases/1-agent-wallet-policy">Give an agent a wallet and a policy</a>, using a passkey instead of a private key.</> },
+{ label: "What you'll use", value: <><code>createPasskeyWallet</code>, <code>grantSession</code>, <code>execute</code>, <code>revokeSession</code>.</> },
+]}
+/>
+
+### How it works
+
+You hold the admin key inside your device's secure hardware, backed by Face ID or Touch ID. The agent holds a separate, scoped session key with a spend cap, an expiry, and a contract allowlist. You can revoke it in one transaction.
+
+The two roles never share a key:
+
+| Role        | Key type            | Held by       | Can be revoked? |
+| ----------- | ------------------- | ------------- | --------------- |
+| Admin (you) | Passkey (P-256)     | Your device   | No: it's yours  |
+| Agent       | Session (secp256k1) | Agent process | Yes: one tx     |
+
+### Try it live
+
+Run the complete flow right here — no setup, no code. Each button calls the Altana SDK against BNB. Your passkey stays on your device.
+
+<PasskeyAgentDemo />
+
+***
+
+### Build this in your own app
+
+The steps below are for developers integrating this flow into a browser app (React, Next.js, plain HTML). `createPasskeyWallet` uses WebAuthn and must run in a browser — it cannot run in Node.js or a terminal.
+
+:::tip[Testing in Node.js or a script?]
+Swap `createPasskeyWallet` for `createHeadlessPasskey` — identical wallet shape, P256 key held in memory, no biometric prompt:
+
+```ts
+import { createClient, BNB, createHeadlessPasskey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const wallet = await client.createWallet({ signer: createHeadlessPasskey() });
+```
+:::
+
+### Step 1: Create the passkey wallet
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+
+const wallet = await client.createPasskeyWallet({
+  name: "MyApp",
+  rpId: "myapp.example", // your app's domain
+});
+```
+
+One biometric prompt. No seed phrase. `wallet.signer` works with every client method.
+
+### Step 2: Grant a session to the agent
+
+You (admin) authorize the agent's key onchain. The agent key is separate from your passkey.
+
+```ts
+const session = await client.grantSession({
+  wallet,
+  signer: wallet.signer,          // your passkey signs this
+  permissions: {
+    calls: [{ to: "0xSomeContract..." }],
+    spend: [{ limit: 50_000_000_000_000_000n, period: "day" }], // 0.05 BNB/day cap
+  },
+  expiry: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 1 day
+});
+```
+
+:::tip[What lands onchain]
+In a single transaction: the agent's public key is registered in [Keystore](/concepts/keystore) and authorized on your wallet with its permissions hash. Any tool can verify the agent's authority with a free `eth_call`, with no API key and no Altana integration required.
+:::
+
+### Step 3: The agent executes, no passkey involved
+
+The agent uses its session key. Your passkey is not touched. The onchain validator enforces the permissions before the call goes through.
+
+```ts
+// This runs in the agent's process — it has the `session` object.
+const result = await client.execute({
+  session,
+  calls: [{ to: "0xSomeContract...", data: "0x...", value: 0n }],
+});
+```
+
+An oversized call, a call to an unauthorized contract, or a call after expiry all revert at validation. The agent literally cannot exceed the leash.
+
+### Step 4: Recover your wallet on any device
+
+Recovery matches your passkey's private key (held on your device, synced via iCloud or Google) against the public key registered onchain in the Keystore. Switch devices, come back months later — both halves are still there.
+
+```ts
+const wallet = await client.recoverFromPasskey({ rpId: "myapp.example" });
+// OS shows the passkey picker → biometric → done.
+```
+
+### Step 5: Revoke the agent
+
+One transaction, effective immediately on this chain. This flow is BNB-only, so there is no L2 cache to keep in sync; see [revokeSession](/sdk/revoke-session#cross-chain-revocation) if you are working across chains.
+
+```ts
+await client.revokeSession({ wallet, signer: wallet.signer, session });
+// The agent's next call reverts at validation.
+```
+
+:::info[Revocation is monotonic]
+Once revoked, a session key cannot be reactivated. To give the agent access again, grant a fresh session with a new keypair.
+:::
+
+***
+
+### What's next
+
+* [Let an agent trade on a DEX](/use-cases/2-agent-trades-dex): point the agent session at a real DEX with a spend cap.
+* [Verify agent authority](/use-cases/4-verify-agent-authority): verify any agent's authority with a single free onchain read.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { UseCaseMeta } from '../../components/UseCaseMeta'
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Let an agent trade on a DEX, capped
+
+<UseCaseMeta
+  tools={['SDK', 'MCP']}
+  rows={[
+{ label: "Goal", value: "I want my agent to trade on a DEX, but capped so it can only spend what I allow and only on that exchange." },
+{ label: "Who it's for", value: "Developers giving a trading agent access to one DEX on BNB Smart Chain, without exposing the rest of the wallet." },
+{ label: "What you'll use", value: <><code>grantSession</code> scoped to the DEX router with a spend cap and expiry, then <code>execute</code> to run the swap.</> },
+{ label: "Prerequisites", value: <>An agentic wallet set up in <a href="/use-cases/1-agent-wallet-policy">Give an agent a wallet and a policy</a>, funded on BNB with a stablecoin to trade.</> },
+]}
+/>
+
+The example below uses **PancakeSwap** on BNB. Swap in any DEX router address to use a different exchange; the pattern is identical. The flow is three steps: connect to the chain, grant a session scoped to the DEX, then let the agent trade within it.
+
+### Step 1: Connect and load your signer
+
+Create a client for BNB Smart Chain and load the admin signer that owns the wallet.<br />This is the key you control, and the agent never sees it.
+
+```ts
+import {
+  createClient,
+  BNB,
+  signerFromPrivateKey,
+} from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+```
+
+### Step 2: Grant a session scoped to the DEX
+
+Give the agent a session key that can reach only one DEX router, with a daily spend cap in your stablecoin and an expiry. These limits are enforced onchain by the wallet, not by your application code.
+
+```ts
+// wallet from the "Give an agent a wallet and a policy" guide
+const session = await client.grantSession({
+  wallet,
+  signer,
+  permissions: {
+    calls: [{ to: "0xPancakeRouter..." }],                          // only this router
+    spend: [{ limit: 100_000_000_000_000_000_000n, period: "day", token: "0xStable..." }],
+  },
+  expiry: Math.floor(Date.now() / 1000) + 3 * 24 * 60 * 60,
+});
+```
+
+### Step 3: Execute a swap within the cap
+
+Pass the session to your agent. It builds the swap calldata and calls `execute` to trade within the limits you set.
+
+```ts
+// The agent builds swap calldata and executes within the cap.
+await client.execute({
+  session,
+  calls: [{ to: "0xPancakeRouter...", data: "0xSwapCalldata...", value: 0n }],
+});
+```
+
+### The moment that makes it click
+
+A swap inside the cap goes through. An oversized swap is blocked at validation before it ever touches the chain.
+
+### Why it is different
+
+The trading bot holds a key that can only hit that one router and only up to the cap. It cannot drain the wallet, cannot touch any other contract, and expires on its own.
+
+### What's next
+
+Ready for more than one agent? [Run a portfolio with multiple agents](/use-cases/3-portfolio-multiple-agents) puts several agents on the same wallet, each with its own scoped session.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { UseCaseMeta } from '../../components/UseCaseMeta'
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Run a portfolio with multiple agents
+
+<UseCaseMeta
+  tools={['SDK', 'MCP']}
+  rows={[
+{ label: "Goal", value: "I want a portfolio wallet run by more than one agent, each with its own job, all transparent and revocable." },
+{ label: "Who it's for", value: "Developers running several agents on one wallet, each with a different job and its own limits." },
+{ label: "What you'll use", value: <><code>grantSession</code> twice with complementary scopes, <code>execute</code>, the Keystore read for mutual verification, <code>revokeSession</code>.</> },
+{ label: "Prerequisites", value: <>An agentic wallet set up in <a href="/use-cases/1-agent-wallet-policy">Give an agent a wallet and a policy</a>, funded on BNB.</> },
+]}
+/>
+
+Two agents share one wallet, each with its own scoped session. You grant them separately, they can verify each other, and you can revoke either one without touching the other.
+
+### Step 1: Connect as the wallet admin
+
+One shared wallet, and you hold the admin key.<br />Each agent will get its own session with a separate job.
+
+```ts
+import {
+  createClient,
+  BNB,
+  signerFromPrivateKey,
+} from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+
+// One shared wallet, the operator is admin. Two agents, separated duties.
+```
+
+### Step 2: Grant Agent A a session for swaps
+
+Agent A can reach only the PancakeSwap router, capped at X per day.<br />It cannot touch anything else on the wallet.
+
+```ts
+// Agent A: swaps on PancakeSwap, cap X.
+const sessionA = await client.grantSession({
+  wallet,
+  signer,
+  permissions: {
+    calls: [{ to: "0xPancakeRouter..." }],
+    spend: [{ limit: capX, period: "day", token: "0xStable..." }],
+  },
+  expiry,
+});
+```
+
+### Step 3: Grant Agent B a session for lending
+
+Agent B gets a separate key scoped to the lending pool, capped at Y.<br />The two agents' scopes never overlap.
+
+```ts
+// Agent B: lending / rebalance, cap Y.
+const sessionB = await client.grantSession({
+  wallet,
+  signer,
+  permissions: {
+    calls: [{ to: "0xLendingPool..." }],
+    spend: [{ limit: capY, period: "day", token: "0xStable..." }],
+  },
+  expiry,
+});
+```
+
+### Step 4: Verify and revoke independently
+
+Each agent can confirm the other is still authorized with a free Keystore read.<br />When you revoke one agent's key, the other keeps working.
+
+```ts
+// Before coordinating, Agent B can verify Agent A is still authorized
+// using the Keystore read from the "Verify agent authority" guide.
+
+// Revoke Agent A without touching Agent B:
+await client.revokeSession({ wallet, signer, session: sessionA });
+// Agent B keeps working.
+```
+
+### Why it is different
+
+Multiple agents on one wallet with divided, independently verifiable, independently revocable authority. Agent-to-agent verification uses only your own agents, with nothing external to set up.
+
+### What's next
+
+* [Verify agent authority](/use-cases/4-verify-agent-authority): confirm each agent's authority with a single onchain read.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { UseCaseMeta } from '../../components/UseCaseMeta'
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Verify an agent's authority from anywhere
+
+<UseCaseMeta
+  tools={['SDK', 'MCP']}
+  rows={[
+{ label: "Goal", value: "I want any app, or a second agent, to confirm an agent's authority on a wallet without integrating Altana." },
+{ label: "Who it's for", value: "Developers or protocols that need to confirm an agent's authority without integrating Altana or trusting a vendor." },
+{ label: "What you'll use", value: <>The Keystore read: <code>isValidKey</code> plus a <code>keccak256</code> of the public key. Free, unlimited, from any RPC.</> },
+{ label: "Prerequisites", value: <>A wallet with an active agent session, granted in <a href="/use-cases/1-agent-wallet-policy">Give an agent a wallet and a policy</a>.</> },
+]}
+/>
+
+Anyone can run this. It is a plain read against the public Keystore, so it needs no admin key, no session, and nothing from Altana.
+
+### Step 1: Set up a public read client
+
+You only need a read client pointed at the chain. No admin key and no session.
+
+```ts
+import { createPublicClient, http, keccak256 } from "viem";
+import { BNB } from "@altananetwork/sdk";
+
+const client = createPublicClient({
+  chain: BNB.chain,
+  transport: http(BNB.publicRpcUrl),
+});
+```
+
+### Step 2: Derive the agent's key id
+
+Keystore identifies a key by its **key id**, the `keccak256` hash of the SEC1-encoded public key. Hash the agent's session public key to get the value you will ask about.
+
+```ts
+const keyId = keccak256(sessionPublicKey);
+```
+
+### Step 3: Ask the Keystore whether that key is authorized
+
+Call `isValidKey` on the Keystore for the wallet you care about.<br />This is a plain `eth_call`: free, unlimited, and available from any RPC.
+
+```ts
+const KEYSTORE_ABI = [{
+  name: "isValidKey", type: "function", stateMutability: "view",
+  inputs: [
+    { name: "user", type: "address" },
+    { name: "keyId", type: "bytes32" },
+  ],
+  outputs: [{ type: "bool" }],
+}] as const;
+
+// One eth_call answers: is this key allowed to act on this wallet right now?
+const authorized = await client.readContract({
+  address: BNB.keyStore,
+  abi: KEYSTORE_ABI,
+  functionName: "isValidKey",
+  args: [walletAddress, keyId],
+});
+```
+
+`isValidKey` returns true only when the key exists, has not been revoked, and has not expired. If you want the whole set of keys on a wallet instead of a single yes or no, read `getKeys(walletAddress)` for the key ids, then check each one with `isValidKey`. Revocation drops a key from `getKeys` immediately, but expiry does not, so a key can still be listed there long after it stopped being usable.
+
+Run this from your own script against your own wallet. This is exactly what a DEX or a counterparty agent would run, for free, from any RPC.
+
+### Why it is different
+
+Authorization is a public onchain object. Verification costs nothing, needs no API key, and works for parties who have never heard of your app.
+
+**Note on sub-delegation.**<br />Only the wallet admin grants sessions. Do not read this as one agent minting a sub-key for another. It is the admin authorizing both agents, and the agents verifying each other. If session-to-session sub-delegation lands later, the docs will be updated.
+
+### What's next
+
+[Authorize across chains](/use-cases/5-cross-chain-authorization): take that authorization to another chain without granting it again.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { UseCaseMeta } from '../../components/UseCaseMeta'
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Authorize across chains
+
+<UseCaseMeta
+  tools={['SDK']}
+  rows={[
+{ label: "Goal", value: "I want a session granted on one chain to be verifiable on another without granting it again." },
+{ label: "Who it's for", value: "Developers who grant a session on one chain and need to verify or act on it from another." },
+{ label: "What you'll use", value: <><code>grantSession</code> on L1, <code>ensureKeyCached</code> to mirror, then verify from L2.</> },
+{ label: "Prerequisites", value: <>A wallet with an active agent session, granted in <a href="/use-cases/1-agent-wallet-policy">Give an agent a wallet and a policy</a>.</> },
+]}
+/>
+
+### How it works
+
+Sessions are granted on L1 (Ethereum, the Keystore source of truth). An L2 cache on Base can verify that same session via a storage proof against L1 state, without any bridge message or re-granting.
+
+`ensureKeyCached` handles the proof:
+
+1. Reads the L2 cache. If the key is already there, returns immediately (`cache-hit`).
+2. Polls the L2's `L1Block` predeploy until it anchors past the relevant L1 block (`waiting-for-anchor`, typically 1–3 min)
+3. Fetches an `eth_getProof` from L1 and submits it to the L2 cache (`submitting-proof`)
+4. Returns once the cache confirms the key is live (`done`)
+
+After step 4, any tool on Base can call `isValidKey` on the cache, for free, from any RPC.
+
+The three steps below follow the flow above: grant on L1, mirror to the L2 cache, then verify on L2.
+
+### Step 1: Grant the session on Ethereum (L1)
+
+Sessions are granted on L1, the Keystore source of truth. This is the same `grantSession` you have already used, pointed at Ethereum.
+
+```ts
+import {
+  createClient,
+  ensureKeyCached,
+  ETHEREUM,
+  BASE,
+  signerFromPrivateKey,
+} from "@altananetwork/sdk";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { mainnet, base } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
+
+// 1. Grant the session on Ethereum (L1, source of truth).
+const client = createClient({ chains: [ETHEREUM] });
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+const wallet = await client.createWallet({ signer });
+
+const session = await client.grantSession({
+  wallet,
+  signer,
+  permissions: {
+    calls: [{ to: "0xSomeContract..." }],
+    spend: [{ limit: 50_000_000_000_000_000n, period: "day" }],
+  },
+  expiry: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60,
+});
+```
+
+### Step 2: Mirror the session to the Base L2 cache
+
+`ensureKeyCached` proves the L1 authorization into an L2 cache. It waits for Base to anchor past the L1 block, submits the storage proof, and returns once the key is live. Any funded account can pay the L2 gas.
+
+```ts
+// 2. Mirror the session key to the Base L2 cache.
+const l1Client = createPublicClient({ chain: mainnet, transport: http(ETHEREUM.publicRpcUrl) });
+const l2Client = createPublicClient({ chain: base, transport: http(BASE.publicRpcUrl) });
+
+// The L2 wallet client pays L2 gas to submit the proof.
+// Any funded account works — your own EOA, a backend relayer, etc.
+const l2WalletClient = createWalletClient({
+  account: privateKeyToAccount(process.env.RELAYER_KEY as `0x${string}`),
+  chain: base,
+  transport: http(BASE.publicRpcUrl),
+});
+
+await ensureKeyCached({
+  l1Client,
+  l2Client,
+  l2WalletClient,
+  l1KeyStore: ETHEREUM.keyStore,
+  l2Cache: BASE.keyStoreCache,
+  user: session.walletAddress,
+  publicKey: session.publicKey,
+  onStatus: (s) => console.log(s), // cache-hit | waiting-for-anchor | submitting-proof | done
+});
+```
+
+### Step 3: Verify the session from Base
+
+Once cached, any tool on Base can confirm the session with a single free read, with no L1 round trip.
+
+```ts
+// 3. Verify the session from Base — free, from any RPC.
+const { keccak256 } = await import("viem");
+
+const CACHE_ABI = [{
+  name: "isValidKey", type: "function", stateMutability: "view",
+  inputs: [
+    { name: "user", type: "address" },
+    { name: "keyId", type: "bytes32" },
+  ],
+  outputs: [{ type: "bool" }],
+}] as const;
+
+const keyId = keccak256(session.publicKey);
+const isValid = await l2Client.readContract({
+  address: BASE.keyStoreCache,
+  abi: CACHE_ABI,
+  functionName: "isValidKey",
+  args: [session.walletAddress, keyId],
+});
+
+console.log("Session valid on Base:", isValid); // true
+```
+
+:::info[L2 execution]
+The current SDK supports wallet execution on BNB and Ethereum. Cross-chain **verification** from Base is available today via `ensureKeyCached` + `isValidKey`; additional L2 execution support will be added as it ships.
+:::
+
+### Why it is different
+
+Authorization crosses chains by storage proof, permissionlessly, with no bridge message and no per-chain re-granting. The first cross-chain action pays the proof cost once; after that, the L2 cache serves reads locally without L1 round-trips.
+
+### What's next
+
+[Browse all guides](/use-cases): see the full map of what you can build with Altana.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Build with Altana</Eyebrow>
+
+## Agent Pays for an API with x402
+
+An agent needs to call a paid API — data, inference, a service — priced per request via the **x402** HTTP standard. With an Altana session key it pays autonomously, capped and revocable, no human in the loop per call.
+
+The session key signs an [x402 payment authorization](/sdk/x402); a facilitator settles it on-chain. The signature is an [ERC-1271](/concepts/off-chain-signatures) smart-account signature, verified on-chain — not a raw EOA signature.
+
+### 1. Provision the wallet once
+
+Grant a scoped session, then set up the payment rail. For the **permit2** rail (works with any token approved to Permit2, including Binance B402):
+
+```ts
+import { createClient, BNB, PERMIT2_ADDRESS, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const admin = signerFromPrivateKey("0x...");
+const wallet = await client.createWallet({ signer: admin });
+const USDC = "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"; // BNB USDC
+
+const session = await client.grantSession({
+  wallet, signer: admin,
+  permissions: {
+    calls: [{ to: USDC }],
+    spend: [{ limit: 1_000_000_000_000_000_000n, period: "day", token: USDC }],
+  },
+  expiry: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+});
+
+await client.approveTokenForPermit2({ wallet, signer: admin, token: USDC });
+await client.approveSignatureChecker({ wallet, signer: admin, session, checker: PERMIT2_ADDRESS });
+```
+
+### 2. The agent pays and fetches
+
+Hand the agent the `session`. From then on, paying is one call:
+
+```ts
+const res = await client.fetchWithX402({
+  session,
+  url: "https://api.example.com/paid-endpoint",
+});
+// 402 → sign payment → retry → 200 + content, transparently.
+console.log(res.status, await res.text());
+```
+
+### Choosing the rail
+
+| Rail              | Use when                                   | Checker   |
+| ----------------- | ------------------------------------------ | --------- |
+| **permit2-exact** | any Permit2-approved token; Binance B402   | Permit2   |
+| **EIP-3009**      | Circle FiatTokenV2\_2 USDC (Base/Ethereum) | the token |
+
+`fetchWithX402` picks the best payable option from the 402 automatically, preferring your chain and the permit2 rail.
+
+### Related
+
+* [x402 payments](/sdk/x402) — the full API
+* [approveSignatureChecker](/sdk/approve-signature-checker) · [approveTokenForPermit2](/sdk/approve-permit2)
+* [Off-chain signatures (ERC-1271)](/concepts/off-chain-signatures) — why and how it verifies
+* [grantSession](/sdk/grant-session) — scoping the session
+
+> Run `fetchWithX402` server-side: third-party x402 endpoints commonly omit `X-PAYMENT` from their CORS allow-list, so browsers can't POST the payment.
+
+
+## Overview
+
+The at-a-glance map. Find your goal, then follow the path.
+
+| Goal                                                                                     | SDK functions                                                                        | MCP commands                                                   | Chain           |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------- | --------------- |
+| [Private key: give an agent a wallet and a policy](/use-cases/1-agent-wallet-policy)     | `createWallet`, `grantSession`, `execute`, `revokeSession`                           | create-wallet, grant-session, send-tx, revoke-session          | BNB             |
+| [Passkey: give an agent a wallet and a policy](/use-cases/1b-passkey-delegates-to-agent) | `createPasskeyWallet`, `grantSession`, `recoverFromPasskey`                          | (browser SDK)                                                  | BNB             |
+| [Agent trades on DEX, capped](/use-cases/2-agent-trades-dex)                             | `grantSession` (scoped), `execute`                                                   | grant-session, session-execute                                 | BNB             |
+| [Portfolio with multiple agents](/use-cases/3-portfolio-multiple-agents)                 | `grantSession` (×2), `execute`, Keystore read, `revokeSession`                       | grant-session, session-execute, verify-session, revoke-session | BNB             |
+| [Verify agent authority from anywhere](/use-cases/4-verify-agent-authority)              | Keystore read (`isValidKey` + `keccak256`)                                           | verify-session                                                 | any             |
+| [Authorization across chains](/use-cases/5-cross-chain-authorization)                    | `grantSession`, `ensureKeyCached`, `execute`                                         | (SDK)                                                          | Ethereum → Base |
+| [Agent pays for an API with x402](/use-cases/6-agent-pays-api-x402)                      | `grantSession`, `approveTokenForPermit2`, `approveSignatureChecker`, `fetchWithX402` | `x402_request` (tool only, no slash command)                   | BNB / Base      |
+
+***
+
+The paths build on each other. [Give an agent a wallet and a policy](/use-cases/1-agent-wallet-policy) is the hello-world every other path assumes. Start there if you are new, or jump to whichever goal matches your situation.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Skills</Eyebrow>
+
+## Skills Registry
+
+A session gives your agent authority. A skill gives it competence.
+
+The [Skills Registry](https://skills.altana.network/) is a catalog of protocol know-how written for AI agents. Each skill is a single `SKILL.md` file that teaches an agent how one protocol actually works: the right contracts, the quirks that break naive integrations, and the exact sequence of calls for each common action. Altana tests every one with real agents on a private fork of mainnet before it goes live.
+
+The registry is free to use, and agents search it themselves.
+
+:::info
+Not to be confused with the [Claude Skill](/mcp/skill), which teaches a coding agent how to write code against `@altananetwork/sdk`. Registry skills teach a running agent how to use a protocol. One is for building with Altana, the other is for acting through it.
+:::
+
+### The problem it solves
+
+Give an agent a wallet and a scoped session and it can sign. It still does not know that USDT on BNB Chain has 18 decimals instead of 6, or that PancakeSwap often routes better through WBNB than through a direct pair, or that a fee-on-transfer token needs a different swap function entirely.
+
+Without a skill, someone hand-teaches the agent each of those facts, per protocol, per project. Every integration is bespoke, and nobody has tested it against the chain until it runs with real money.
+
+With a skill, that knowledge is written once, validated against a private copy of the chain, and available to every agent connected to Altana.
+
+### Skills describe capability. Sessions bound authority.
+
+The two are deliberately separate, and the split is what makes skills safe to share.
+
+A skill is public, readable text. It cannot grant anything. It can only describe what a protocol does and how to use it well. The authority to spend lives entirely in the [session](/concepts/sessions) you grant: which contracts are callable, how much can move per period, when it all expires. An agent holding the PancakeSwap skill and no session can do exactly nothing.
+
+That is why each catalog entry publishes its scope alongside the skill. A lending skill, for example, declares what it may do and what it may not:
+
+| May                             | May not                      |
+| ------------------------------- | ---------------------------- |
+| Supply a stablecoin to the pool | Borrow against it            |
+| Withdraw the position           | Send funds anywhere else     |
+| Spend up to the cap you set     | Touch any other app or token |
+
+The right-hand column is not a promise from the skill author. It is what your session enforces onchain, and what anyone can verify from the [Keystore](/concepts/keystore) without trusting Altana or the agent.
+
+Read [Sessions](/concepts/sessions) for the permission shape, or [Verify agent authority](/use-cases/4-verify-agent-authority) for how a third party checks it.
+
+### What is in the catalog
+
+Skills span trading, liquidity, lending, payments, staking, and research. What each kind gives an agent:
+
+* **Trading.** Buy and sell tokens on a DEX or a launchpad, with quotes, slippage floors, and full-balance exits.
+* **Liquidity.** Add and remove pool positions, and read your share of one.
+* **Lending.** Supply assets for yield and withdraw on command. Borrowing is usually out of scope on purpose.
+* **Payments.** Pay per API call, machine to machine, under a per-payment maximum. See also [x402 in the SDK](/sdk/x402).
+* **Staking.** Stake a native asset for a liquid staking token, and queue withdrawals back.
+* **Research.** Screen tokens or watch a wallet. Read only, so the session permits no onchain calls at all.
+
+Research skills are worth noticing. Because a skill carries no authority of its own, a read-only skill paired with a zero-scope session is a genuinely safe way to let an agent look around before you give it anything to spend.
+
+Each catalog entry publishes its suggested spend cap, an example ask, and the exact may and may-not scope. Those come from the registry itself, so the catalog is always the current answer.
+
+[Browse the full catalog →](https://skills.altana.network/)
+
+### What a skill looks like
+
+Every skill is one file with four parts. The excerpts below come from PancakeSwap Trading, which the [contributing guide](https://github.com/altananetwork/skills/blob/main/CONTRIBUTING.md) names as the model of a finished skill.
+
+They are a snapshot of a versioned file. Read [the current version on GitHub](https://github.com/altananetwork/skills/blob/main/skills/pancakeswap-trading/SKILL.md) before you copy anything into production.
+
+**Frontmatter.**
+
+```md
+---
+name: pancakeswap-trading
+description: Buy and sell tokens on PancakeSwap on BNB Chain through an
+  Altana session. In and out of positions fast, with quotes, slippage
+  protection, and full-balance exits.
+---
+```
+
+* `name` is the skill id, and matches the directory name in the repo.
+* `description` is one sentence starting with a verb, naming the protocol and the chain.
+* This is the text an agent matches against when it searches the registry.
+
+**Reference.**
+
+```md
+| Contract | Address |
+|---|---|
+| PancakeSwap V2 Router | `0x10ED43C718714eb63d5aA57B78B54704E256024E` |
+| WBNB | `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c` |
+| USDT (BSC-USD) | `0x55d398326f99059fF775485246999027B3197955` |
+
+### Quirks that cause mistakes
+
+- USDT on BNB Chain has 18 decimals, not 6 like Ethereum. $20 is `20n * 10n**18n`.
+- Route selection: quote the direct pair AND the WBNB hop with `getAmountsOut`,
+  then use whichever quotes better.
+- Approve before each swap direction.
+```
+
+* Addresses go in a checksummed table, listing only the contracts the plays actually touch.
+* Quirks are the three to six protocol facts that break naive integrations, one line each.
+* USDT having 18 decimals on BNB Chain instead of 6 is exactly the kind of fact an agent cannot infer.
+* The address table does double duty: the suggested session scope is derived from it.
+
+**Playbook.**
+
+```md
+### Play: enter-position
+
+Buy a token with USDT. Parameters: token address, USDT amount, slippage (default 1%).
+
+**Typical time:** ~15s
+
+1. Read the token's `decimals()`. Quote both routes with `getAmountsOut`; pick the better.
+2. `execute([approve(USDT, router, amount), swap(amount, quote minus slippage, path, wallet, now+600)])`
+3. Verify the token balance increased before reporting success.
+```
+
+* One play per common action, two to five in total.
+* Each play names its parameters and a typical time, so the caller knows what to expect.
+* Steps are numbered so an agent can run the whole play in a single script.
+
+**Guards.**
+
+```md
+- `amountOutMin` is always a fresh quote minus slippage. Never 0.
+- Verify balances onchain after each leg; report only what the chain confirms.
+- If a swap reverts, requote once with +1% slippage and retry a single time;
+  otherwise stop and report. Do not improvise outside the session scope.
+```
+
+* Guards pin the safety decisions in place: output floors, onchain verification after every state change, retry limits.
+* Certification verifies them, so a submission cannot trim them for brevity.
+* They also say what to do on failure: stop and report, never improvise outside the session scope.
+
+Notice what the plays never do: they do not sign. Every onchain write goes through the Altana session executor, `client.execute({ session, calls })`. Reads go straight to the RPC. That one rule is what keeps a skill from being able to widen its own scope.
+
+[Submit a skill](/skills/submit) reproduces this file in full, as the worked example to copy from.
+
+### Using a skill with your agent
+
+Give the agent two things.
+
+* The skill file, which says how the protocol works.
+* A session scoped to the contracts that skill's address table names, which says what the agent may spend.
+
+The scope is the same information as the address table, in a different shape. Copy the addresses from the skill you are actually using rather than from this page.
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const admin = signerFromPrivateKey(process.env.ADMIN_KEY as `0x${string}`);
+const wallet = await client.createWallet({ signer: admin });
+
+// Scope taken straight from the PancakeSwap Trading skill's address table.
+const PANCAKE_ROUTER = "0x10ED43C718714eb63d5aA57B78B54704E256024E";
+const USDT = "0x55d398326f99059fF775485246999027B3197955";
+
+const session = await client.grantSession({
+  wallet,
+  signer: admin,
+  permissions: {
+    calls: [{ to: PANCAKE_ROUTER }, { to: USDT }],
+    spend: [{
+      limit: 50n * 10n ** 18n,   // 50 USDT. Note: 18 decimals on BNB Chain.
+      period: "day",
+      token: USDT,
+    }],
+  },
+  expiry: Math.floor(Date.now() / 1000) + 24 * 60 * 60,
+});
+
+// Hand `session` to the agent. It reads the skill for how, and is bound
+// by these permissions for what.
+```
+
+The agent then executes the skill's plays through that session:
+
+```ts
+await client.execute({
+  session,
+  calls: [
+    { to: USDT, data: approveCalldata },
+    { to: PANCAKE_ROUTER, data: swapCalldata },
+  ],
+});
+```
+
+Anything outside `calls` or over the spend cap reverts onchain, whatever the skill says. When you are done, [`revokeSession`](/sdk/revoke-session) ends it.
+
+If you operate through Claude or Cursor rather than code, the [MCP server](/mcp) exposes the same grant and execute steps as tools, so an agent can hold a skill and a session without you writing any of the above.
+
+### Next
+
+* [Submit a skill](/skills/submit). Write one `SKILL.md`, self-test it on a fork, open a pull request.
+* [MCP Server](/mcp). Run skills from Claude, Cursor, or any MCP client.
+* [Sessions](/concepts/sessions). The permission shape a skill's scope maps onto.
+* [Let an agent trade on a DEX](/use-cases/2-agent-trades-dex). The same PancakeSwap flow, end to end, in code.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+import { CopyBlock } from '../../components/CopyBlock'
+
+<Eyebrow>Skills</Eyebrow>
+
+## Submit a skill
+
+Put your protocol in every agent.
+
+A skill is one markdown file that teaches AI agents how to use your protocol, always inside the limits their owner sets. Submit one, and every agent connected to Altana can find it and act on it. The whole process is a pull request against [`altananetwork/skills`](https://github.com/altananetwork/skills).
+
+Three steps.
+
+1. **Write it.** One `SKILL.md` with your protocol's know-how and plays.
+2. **We test it.** Real agents trade with it on a private copy of the chain.
+3. **It's live.** Every AI agent can find and use it, safely.
+
+### Step 1. Get the file written
+
+Two ways to produce the same thing: one `SKILL.md` in `skills/<your-skill-id>/`.
+
+#### Let your agent write it
+
+Fastest path. Paste this into Claude Code, Cursor, or any coding agent with your protocol's name filled in. It reads the template and a finished example, writes the skill, and tests it.
+
+<CopyBlock label="Prompt" text={`Read the Altana skill template at https://github.com/altananetwork/skills/blob/main/skills/_template/SKILL.md and the example at https://github.com/altananetwork/skills/blob/main/skills/pancakeswap-trading/SKILL.md. Write a SKILL.md for <protocol> following the template exactly: one capability, checksummed addresses in a table, plays with parameters and Typical time lines, and explicit guards. Then write the test scenario described in tools/skill-test/scenarios and self-test with the harness.`} />
+
+#### Or write it yourself
+
+Copy the annotated template and fill in your protocol's addresses, quirks, and plays.
+
+```md [skills/_template/SKILL.md]
+---
+name: your-skill-id
+description: One sentence saying what the skill does for the user, starting with a verb. Mention the protocol and the chain.
+---
+
+# Your Skill Name
+
+One short paragraph: what this skill lets an agent do, and the one rule of the house:
+onchain writes go only through the Altana session executor; reads can go directly
+against the RPC. If the skill is research only, say the session permits no onchain
+calls at all.
+
+## Reference
+
+Facts an agent needs to act correctly. Keep it tight; the agent already knows DeFi
+generally. Cover only what is protocol specific.
+
+### Addresses (chain name)
+
+| Contract | Address |
+|---|---|
+| Main contract the plays call | `0xChecksummedAddress` |
+| Token or helper it needs | `0xChecksummedAddress` |
+
+Every address checksummed (run `cast to-check-sum-address`). Only list contracts the
+plays actually touch; the session scope is derived from this table.
+
+### Quirks that cause mistakes
+
+- The three to six protocol facts that break naive integrations: decimals surprises,
+  approve-before-call patterns, functions that return error codes instead of
+  reverting, timing windows, fee-on-transfer behavior. One line each.
+
+### Functions (if the protocol is unusual)
+
+Signatures for the calls the plays make, only when the agent is unlikely to know them.
+
+## Playbook
+
+One `### Play:` per common action. Two to five plays. Each play: parameters, a
+Typical time line, and numbered steps an agent can execute in one script.
+
+### Play: action-name
+
+What it does in one line. Parameters: the two or three things the user chooses.
+
+**Typical time:** ~15s
+
+1. The read that sizes or quotes the action.
+2. The `execute([...])` calls, in order.
+3. The onchain verification before reporting success.
+
+## Guards (do not remove)
+
+- The safety decisions pinned in place: minimum output floors, balance verification
+  after every state change, retry limits, stop conditions.
+- Always verify outcomes from chain state, never from transaction success alone.
+- What the agent must do when something fails: stop and report, never improvise
+  outside the session scope.
+```
+
+The rules the template encodes, stated plainly:
+
+* **One capability per skill**, which means one session scope. A skill needing two unrelated scopes is two skills.
+* **Every play declares its parameters and keeps its guards explicit.** Guards are part of what certification verifies, so they cannot be trimmed for brevity.
+* **Plain language, no em dashes. Addresses in tables, checksummed.**
+
+#### Self-test before you open the PR
+
+Run the same harness Altana uses for certification, on your own machine and your own model API keys. It has real agents exercise the skill on a private copy of the chain.
+
+<CopyBlock label="Shell" text={`cd tools/skill-test && bun install && bun run skill-test --skill ../../skills/<your-skill-id> --trials 3`} />
+
+If your skill needs a new scenario (a task, a session scope, and an onchain judge), add `tools/skill-test/scenarios/<your-skill-id>.ts` implementing the `Scenario` interface and include it in the pull request.
+
+### Step 2. Open the pull request
+
+Add your skill directory to the repo and open a PR.
+
+<a className="altana-button" href="https://github.com/altananetwork/skills/compare" target="_blank" rel="noreferrer">
+  Open a pull request →
+</a>
+
+Here is what happens next.
+
+1. **Maintainers review it like code:** one capability per skill, guards in every play, checksummed addresses, a test scenario included. Address checksums are re-verified with `cast`. A submission with an unverified or invalid address is corrected or rejected, even when the uncertainty is flagged.
+2. **Certification runs on Altana infrastructure:** N fresh-agent trials on a mainnet fork, judged from onchain state. A single attempted action outside the declared scope disqualifies. On a fail, you get the trial transcripts.
+3. **On a pass it goes live** on the [catalog](https://skills.altana.network/), and every agent connected to Altana can use it. Maintainers add the entry to `index.json` with the content hash. `index.json` is never edited by a submitting PR.
+
+Certification re-runs on every version change of the skill.
+
+### A finished skill, end to end
+
+This is `skills/pancakeswap-trading/SKILL.md` in full, the skill the [contributing guide](https://github.com/altananetwork/skills/blob/main/CONTRIBUTING.md) names as the model of a finished one. Read it once before you write yours.
+
+It is reproduced here as a snapshot. Skills are versioned and re-certified on every change, so work from [the current file in the repo](https://github.com/altananetwork/skills/blob/main/skills/pancakeswap-trading/SKILL.md) when you copy structure from it.
+
+```md [skills/pancakeswap-trading/SKILL.md]
+---
+name: pancakeswap-trading
+description: Buy and sell tokens on PancakeSwap on BNB Chain through an Altana session. In and out of positions fast, with quotes, slippage protection, and full-balance exits.
+---
+
+# PancakeSwap Trading
+
+Trade tokens on PancakeSwap V2 on BNB Chain as an Altana session. Submit onchain writes
+only through your Altana session executor (`execute(calls)` with the SDK, or the
+`session_execute` MCP tool). Reads can go directly against the RPC.
+
+## Reference
+
+Everything you need to trade PancakeSwap well: the right contracts, quoting, token
+quirks, and safe slippage habits.
+
+### Addresses (BNB Chain mainnet)
+
+| Contract | Address |
+|---|---|
+| PancakeSwap V2 Router | `0x10ED43C718714eb63d5aA57B78B54704E256024E` |
+| WBNB | `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c` |
+| USDT (BSC-USD) | `0x55d398326f99059fF775485246999027B3197955` |
+
+### Quirks that cause mistakes
+
+- USDT on BNB Chain has 18 decimals, not 6 like Ethereum. $20 is `20n * 10n**18n`.
+- The target token may have different decimals. Read `decimals()` before computing amounts.
+- Route selection: quote the direct pair AND the WBNB hop (`[USDT, WBNB, TOKEN]`) with
+  `getAmountsOut`, then use whichever quotes better. Deep majors often have a direct
+  USDT pool; most tokens only have a WBNB pool.
+- Approve before each swap direction: `approve(router, amount)` on the input token
+  (USDT before buying, the token before selling back).
+- Fee-on-transfer tokens (transfer taxes) need the
+  `swapExactTokensForTokensSupportingFeeOnTransferTokens` variant. Detect by simulating
+  the standard swap first; if it reverts with sufficient allowance and balance, switch.
+
+### Router functions (Uniswap V2 style)
+
+- Quote: `getAmountsOut(uint256 amountIn, address[] path) returns (uint256[])`
+- Swap: `swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, address to, uint256 deadline)`
+- `amountOutMin`: quote minus 1 to 3 percent slippage. Never 0.
+- `deadline`: unix seconds, now + 600.
+
+## Playbook
+
+### Play: enter-position
+
+Buy a token with USDT. Parameters: token address, USDT amount, slippage (default 1%).
+
+**Typical time:** ~15s
+
+1. Read the token's `decimals()`. Quote both routes with `getAmountsOut`; pick the better.
+2. `execute([approve(USDT, router, amount), swap(amount, quote minus slippage, path, wallet, now+600)])`
+3. Verify the token balance increased before reporting success.
+
+### Play: exit-position
+
+Sell part or all of a position back to USDT. Parameters: token address, amount or "all".
+
+**Typical time:** ~15s
+
+1. For "all", read the live token balance and use the full amount.
+2. Quote the reverse path. `execute([approve(TOKEN, router, amount), swap(...)])`
+3. Verify USDT increased and the token balance decreased accordingly.
+
+### Play: round-trip
+
+In and out in one move: buy, confirm, sell. Parameters: token, USDT amount, slippage.
+
+**Typical time:** ~50s including your own verification reads
+
+Write one script that quotes, buys, reads the received token balance in the same run,
+then approves and sells that exact balance back. One script, four transactions, no
+pauses between steps. Verify final balances onchain and report amounts and tx hashes.
+
+### Play: tp-sl-watch
+
+Enter, then monitor and exit at take profit or stop loss. Parameters: token, amount,
+take-profit %, stop-loss %.
+
+**Typical time:** runs until an exit triggers
+
+1. Run enter-position. Record the entry quote.
+2. Loop: every few seconds re-quote the position's USDT value with `getAmountsOut`.
+3. When value crosses take-profit or stop-loss, run exit-position with "all".
+4. Report entry, exit, and realized result. Re-quote before exiting; never sell on a
+   stale quote.
+
+## Guards (do not remove)
+
+- `amountOutMin` is always a fresh quote minus slippage. Never 0.
+- Verify balances onchain after each leg; report only what the chain confirms.
+- If a swap reverts, requote once with +1% slippage and retry a single time; otherwise
+  stop and report. Do not improvise outside the session scope.
+```
+
+Four plays, one scope, guards that survive contact with a bad fill. That is the bar.
+
+### Next
+
+* [Skills Registry](/skills). What skills are and how sessions bound them.
+* [Contributing guide](https://github.com/altananetwork/skills/blob/main/CONTRIBUTING.md). The full rules, in the repo.
+* [Sessions](/concepts/sessions). The permission shape your address table maps onto.
+* [MCP Server](/mcp). How agents execute a skill's plays in practice.
+
+
+## Audit reports
+
+The Altana Keystore contracts were audited by [CertiK](https://www.certik.com), completed 15 July 2026. The full report, the finding-by-finding detail and the current status of every item are published on [CertiK Skynet](https://skynet.certik.com/projects/altana).
+
+Scope was `KeyStore.sol` and `KeyStoreCacheOPStack.sol`, plus six further files listed in the report: the onchain registry that stores session-key permissions, and the L2 cache contract that mirrors them to Base. These are the contracts that decide whether an agent is authorized to act.
+
+The audited source is deployed and source-verified, exact match, on all three networks Altana runs on. You can read it directly:
+
+| Network         | Contract             | Explorer                                                                                  |
+| --------------- | -------------------- | ----------------------------------------------------------------------------------------- |
+| Ethereum        | KeyStore             | [Etherscan](https://etherscan.io/address/0xb70fDa90C1d576Ba8399946a0c10ECD9d9Ea923b#code) |
+| BNB Smart Chain | KeyStore             | [BscScan](https://bscscan.com/address/0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a#code)    |
+| Base            | KeyStoreCacheOPStack | [Basescan](https://basescan.org/address/0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a#code)  |
+
+Addresses for every deployed contract are listed under [Networks & Addresses](/concepts/networks).
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## approveTokenForPermit2
+
+The permit2 [x402](/sdk/x402) rail moves tokens through the canonical Permit2 contract, which must hold an ERC-20 allowance from the wallet. This sets that allowance once (default: max).
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+
+await client.approveTokenForPermit2({
+  wallet,
+  signer: admin,     // the wallet's admin
+  token: USDC,       // the token you'll pay with
+  // amount defaults to max uint256; pass a value to cap it.
+});
+```
+
+### Parameters
+
+```ts
+client.approveTokenForPermit2(opts: ClientApproveTokenForPermit2Options): Promise<ExecuteResult>;
+
+type ClientApproveTokenForPermit2Options = {
+  wallet: Wallet;
+  signer: Signer;      // the wallet's admin signer
+  token: Address;
+  amount?: bigint;     // default: max uint256
+  feeToken?: Address;  // default: native token
+  chainId?: number;    // default: the client's default chain
+};
+```
+
+The Permit2 address (identical on every chain) is exported as `PERMIT2_ADDRESS`.
+
+### Notes
+
+* One approval per token covers unlimited future permit2 payments.
+* This is only for the **permit2** rail. The EIP-3009 rail needs no Permit2 approval — only an [approveSignatureChecker](/sdk/approve-signature-checker) on the token.
+* Pair it with `approveSignatureChecker({ checker: PERMIT2_ADDRESS })` to complete permit2 provisioning.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## approveSignatureChecker
+
+A session key's [ERC-1271](/concepts/off-chain-signatures) `isValidSignature` only returns the magic value when the **caller** (`msg.sender`) is an approved checker for that key. This authorizes that caller. Run it once per session, per rail.
+
+```ts
+import { createClient, BNB, PERMIT2_ADDRESS } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+
+// permit2-exact rail → checker is Permit2:
+await client.approveSignatureChecker({
+  wallet,
+  signer: admin,        // the wallet's admin
+  session,              // the session whose signatures should verify
+  checker: PERMIT2_ADDRESS,
+});
+
+// EIP-3009 rail → checker is the token contract:
+await client.approveSignatureChecker({ wallet, signer: admin, session, checker: USDC });
+
+// Later, to remove it:
+await client.revokeSignatureChecker({ wallet, signer: admin, session, checker: PERMIT2_ADDRESS });
+```
+
+### Which checker?
+
+| Rail                           | `checker`                                 |
+| ------------------------------ | ----------------------------------------- |
+| Permit2 / permit2-exact (x402) | the canonical Permit2 (`PERMIT2_ADDRESS`) |
+| EIP-3009 (x402 `exact`)        | the token contract (e.g. USDC)            |
+
+### Parameters
+
+```ts
+client.approveSignatureChecker(opts: ClientApproveSignatureCheckerOptions): Promise<ExecuteResult>;
+client.revokeSignatureChecker(opts: ClientApproveSignatureCheckerOptions): Promise<ExecuteResult>;
+
+type ClientApproveSignatureCheckerOptions = {
+  wallet: Wallet;
+  signer: Signer;      // the wallet's admin signer
+  session: Session;
+  checker: Address;
+  feeToken?: Address;  // default: native token
+  chainId?: number;    // default: the client's default chain
+};
+```
+
+Under the hood this is a self-call to `setSignatureCheckerApproval(sessionKeyHash, checker, isApproved)` submitted via the relay.
+
+### Notes
+
+* This authorizes *who may verify* the session's signatures; it does not grant the session any spend or call permissions (those come from [grantSession](/sdk/grant-session)).
+* Super-admin keys skip the checker gate entirely; the gate applies to scoped session keys.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## balances
+
+Read a wallet's on-chain balances. This is a plain read: no signer, no userOp, no relay. It works for any address (a `Wallet` you created or a bare `0x…` address), including counterfactual wallets that haven't been deployed yet.
+
+```ts
+// `client` and `wallet` from earlier
+const { native } = await client.balances({ wallet });
+console.log(native); // bigint — native token balance in wei
+```
+
+Pass a bare address if that's all you have:
+
+```ts
+const { native } = await client.balances({
+  wallet: "0xabc…" as `0x${string}`,
+});
+```
+
+Target a specific chain when the client is configured with more than one:
+
+```ts
+import { createClient, BNB, ETHEREUM } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB, ETHEREUM] });
+
+// BNB Smart Chain (the default — first chain)
+const bnb = await client.balances({ wallet });
+// Ethereum
+const ethereum = await client.balances({ wallet, chainId: 1 });
+```
+
+### ERC-20 tokens
+
+Pass `tokens` to read ERC-20 balances in the same call. All per-token reads are batched into a single multicall:
+
+```ts
+const res = await client.balances({
+  wallet,
+  tokens: ["0x55d398326f99059ff775485246999027b3197955"], // USDT (BSC)
+});
+
+for (const t of res.tokens!) {
+  if (!t.ok) continue;            // token whose reads reverted (bad address, non-ERC-20)
+  console.log(t.display, t.symbol); // "12.5 USDT" — ready to render
+  console.log(t.raw);               // bigint — the on-chain amount, use for transfers
+}
+```
+
+#### BEP-677 scaled UI amounts
+
+Tokens implementing [BEP-677](https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-677.md) (`IScaledUIAmount`, detected via ERC-165 id `0xa60bf13d`) carry a display multiplier: wallets must show `raw × uiMultiplier / 1e18` while raw balances and allowances stay unchanged on-chain. `balances` handles this automatically — `display` (and `scaled.scaledRaw`) carry the multiplier; `raw` never does.
+
+```ts
+const [t] = (await client.balances({ wallet, tokens: [scaledToken] })).tokens!;
+if (t.ok && t.scaled) {
+  t.display;               // "1500" — already scaled (raw 1000, ×1.5)
+  t.scaled.uiMultiplier;   // 1500000000000000000n (1e18 fixed-point)
+  t.scaled.scaledRaw;      // 1500000000000000000000n — the bigint behind display
+  t.scaled.pending;        // set iff a multiplier change is scheduled but not yet effective
+}
+```
+
+Scheduled multiplier changes (`newUIMultiplier()` / `effectiveAt()`, ERC-165 id `0x4bd27648`) are compared against the block timestamp of the same multicall: a change still in the future is surfaced under `scaled.pending` without being applied early; a change already effective is applied even if the token's `uiMultiplier()` lazily reports the old value.
+
+### Parameters
+
+```ts
+client.balances(opts: ClientBalancesOptions): Promise<BalancesResult>;
+
+type ClientBalancesOptions = {
+  wallet: Wallet | Address;       // a Wallet object or a bare 0x… address
+  tokens?: readonly Address[];    // ERC-20s to include; BEP-677 display scaling is automatic
+  chainId?: number;               // defaults to the client's default chain
+};
+
+type BalancesResult = {
+  native: bigint;                 // native token balance in wei (BNB on BNB Smart Chain, ETH on Ethereum)
+  tokens?: TokenBalance[];        // present iff `tokens` was passed; input order preserved
+};
+
+type TokenBalance =
+  | {
+      address: Address;
+      ok: true;
+      raw: bigint;                // on-chain balanceOf — what transfers/allowances use
+      decimals: number;
+      symbol: string;             // "" if symbol() is missing/undecodable
+      display: string;            // human string, BEP-677 multiplier already applied
+      scaled?: {                  // present iff the token implements IScaledUIAmount
+        uiMultiplier: bigint;     // active multiplier, 1e18 fixed-point
+        scaledRaw: bigint;        // raw * uiMultiplier / 1e18, truncated
+        pending?: { newUIMultiplier: bigint; effectiveAt: bigint };
+      };
+    }
+  | { address: Address; ok: false; error: string };
+```
+
+### Notes
+
+* **Raw vs display.** `raw` is always the unscaled on-chain amount — build transfers and allowance checks on it. `display` is what to show users; for BEP-677 tokens the two intentionally differ.
+* **Truncation.** Scaling uses the spec's integer formula `raw × uiMultiplier / 1e18`, truncating toward zero. Round-trips are not lossless.
+* **Non-ERC-165 tokens are fine.** Tokens without `supportsInterface` (e.g. USDT) simply come back unscaled; the failed detection call is expected and handled.
+* **A bad token doesn't throw.** An address whose `balanceOf`/`decimals` reads revert yields `{ ok: false, error }` and leaves the other entries intact.
+* **No funds required.** It's a read against the chain's public RPC, so it doesn't cost gas and doesn't need the wallet to be funded or deployed.
+* **Units are wei.** Use viem's [`formatEther`](https://viem.sh/docs/utilities/formatEther) for `native`; token entries already provide `display`.
+
+
+## BNB Testnet
+
+BNB Smart Chain Testnet (chain id **97**) is Altana's full-stack testnet — the
+keystore, account contracts, and the Altana testnet relay are all deployed there
+(see [Testnet](/concepts/networks/testnet)), and the SDK ships a ready-made
+`BNB_TESTNET` config.
+
+### Install
+
+```bash
+npm install @altananetwork/sdk viem
+```
+
+### Create a wallet on BNB testnet
+
+```ts
+import { createClient, BNB_TESTNET, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB_TESTNET] });
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+
+const wallet = await client.createWallet({ signer });
+
+console.log(wallet.address);
+```
+
+**Fund `wallet.address` with test BNB before step 2:** [testnet.bnbchain.org/faucet-smart](https://testnet.bnbchain.org/faucet-smart)
+
+### What's next
+
+* [Testnet networks & addresses](/concepts/networks/testnet). Chain ids, RPCs, faucet, and contract addresses.
+* [Grant a session](/sdk/grant-session). Scoped, time-bounded keys for AI agents.
+
+
+## BNB Smart Chain
+
+BNB Smart Chain (chain id **56**) is Altana's default network.
+
+The keystore and the account contracts are deployed there (see [Networks & Addresses](/concepts/networks)), and the SDK ships a ready-made `BNB` config.
+
+### Install
+
+```bash
+npm install @altananetwork/sdk viem
+```
+
+### Create a wallet on BNB
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+
+const wallet = await client.createWallet({ signer });
+
+console.log(wallet.address);
+```
+
+**Fund `wallet.address` with BNB before step 2.** Send BNB from any exchange or wallet to the printed address.
+
+### Multi-chain
+
+`createClient` accepts multiple wallet execution chains. Add Ethereum alongside BNB and pass `chainId` per call:
+
+```ts
+import { createClient, BNB, ETHEREUM } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB, ETHEREUM], defaultChainId: 56 });
+await client.grantSession({ /* ... */, chainId: 1 }); // operate on Ethereum
+```
+
+The SDK also exports `BASE` for the L2 Keystore cache used by cross-chain verification.
+
+### What's next
+
+* [Networks & Addresses](/concepts/networks). Chain ids, RPCs, and contract addresses.
+* [BNB Testnet](/sdk/bnb-testnet). Build against chain 97 with a faucet before going to mainnet.
+* [Grant a session](/sdk/grant-session). Scoped, time-bounded keys for AI agents.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## createPasskeyWallet
+
+`client.createPasskeyWallet` creates a smart-account wallet whose admin authority is a passkey (Face ID, Touch ID, Windows Hello, hardware security key). The private key never leaves the device's secure hardware.
+
+**Browser only.** Uses `navigator.credentials`.
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const wallet = await client.createPasskeyWallet({
+  name: "MyApp",
+  rpId: "myapp.example",
+});
+
+// wallet.signer is a PasskeySigner. Use it like any other signer.
+```
+
+Same as [`createWallet`](/sdk/create-wallet): the wallet is counterfactual until the first [`execute`](/sdk/execute), which is when the admin (P-256) public key gets registered in [Keystore](/concepts/keystore).
+
+### Parameters
+
+```ts
+type ClientCreatePasskeyWalletOptions = {
+  /** Label shown in the OS passkey prompt (e.g. "MyApp"). */
+  name: string;
+  /** Relying-Party ID. Defaults to the current origin's host. */
+  rpId?: string;
+};
+```
+
+The chains the wallet is provisioned on come from the client (`createClient({ chains })`). For wallet execution, use `BNB` or `ETHEREUM`; `BASE` is exported for the L2 Keystore cache used by cross-chain verification.
+
+### Returns
+
+A standard `CreateWalletResult` whose `signer` is a `PasskeySigner`.
+
+### Notes
+
+* The wallet address is **embedded in the passkey's userHandle** at creation time. This is what makes [`recoverFromPasskey`](/sdk/recover-from-passkey) work later: the device knows which wallet each saved passkey belongs to.
+* Authorization on the chain side uses **P-256 (secp256r1)** signatures, matching WebAuthn. [Keystore](/concepts/keystore) is signature-scheme agnostic, so it stores the P-256 public key the same way it stores secp256k1 keys.
+* The user sees a single biometric prompt per signature. No seed phrases, no extension required.
+
+### Example: full passkey app flow
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+
+async function loginOrSignup() {
+  try {
+    // Returning user: pick from saved passkeys
+    return await client.recoverFromPasskey({ rpId: "myapp.example" });
+  } catch {
+    // New user: create one
+    return await client.createPasskeyWallet({
+      name: "MyApp",
+      rpId: "myapp.example",
+    });
+  }
+}
+
+const wallet = await loginOrSignup();
+await client.execute({
+  wallet,
+  signer: wallet.signer,
+  calls: { to: "0x...", value: 0n },
+});
+```
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## createWallet
+
+`client.createWallet` creates a smart-account wallet for a signer. The signer's key lives wherever you keep it (env var, OS keychain, hardware wallet). Altana never sees it.
+
+First create a client with `createClient`, configured with the chains the wallet should work on. The same wallet address is provisioned on every chain the client lists.
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const signer = signerFromPrivateKey("0x...");
+const wallet = await client.createWallet({ signer });
+```
+
+The wallet is **counterfactual**. Its address is deterministic, but it isn't a smart account onchain until the first [`execute`](/sdk/execute). That first execute is what registers the admin key in [Keystore](/concepts/keystore).
+
+### Parameters
+
+```ts
+type ClientCreateWalletOptions = {
+  /** Bring your own signer. If omitted, the SDK generates a fresh private-key signer. */
+  signer?: Signer;
+};
+```
+
+The chains the wallet is provisioned on come from the client (`createClient({ chains })`), not from this call.
+
+### Returns
+
+```ts
+type CreateWalletResult = {
+  address: Address;            // the wallet's smart-account address (same on every chain)
+  signer: Signer;              // same reference if you passed one in
+};
+```
+
+### Notes
+
+* Fund `result.address` with native tokens before calling `execute` — the wallet is counterfactual and has no balance until you send some.
+* If you omit `signer`, the SDK generates a fresh private-key signer and returns it on the result. Persist `result.signer` however your app stores keys.
+* The address is identical on every chain the client was configured with, so one wallet handle works across all of them: pass `chainId` per operation to pick which one.
+
+### Private key helpers
+
+Two functions handle the private-key signer path:
+
+**`signerFromPrivateKey(key)`**: reconstructs a signer from a key you already have. Use this when the key is stored in an env var, OS keychain, or secrets manager.
+
+```ts
+import { signerFromPrivateKey } from "@altananetwork/sdk";
+
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+```
+
+**Need a new key?** Generate it yourself, then wrap it. The SDK never stores key material and has no supported way to hand a key back to you, so the copy you make here is the only one.
+
+```ts
+import { generatePrivateKey } from "viem/accounts";
+import { signerFromPrivateKey, createClient, BNB } from "@altananetwork/sdk";
+
+const privateKey = generatePrivateKey();
+console.log("Save this key:", privateKey); // persist before continuing
+
+const signer = signerFromPrivateKey(privateKey);
+const client = createClient({ chains: [BNB] });
+const wallet = await client.createWallet({ signer });
+```
+
+`createPrivateKeySigner()` also generates a fresh secp256k1 key, and `createWallet()` with no `signer` argument calls it internally and attaches the result to `wallet.signer`. Both are fine when the key is ephemeral, for a test or a throwaway wallet. Neither is a good fit when you need to keep the key: `wallet.signer` is typed as a `Signer`, which exposes an address, a public key, and the ability to sign, and nothing that yields the private key. Generate the key yourself whenever you intend to persist it.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK · Payments</Eyebrow>
+
+## ERC-8183: hire BNB agents
+
+BNB Agent Studio's agent economy runs on two rails — selling via ERC-8183 job
+escrow in $U, buying via x402. The SDK supports both sides: **any agent using
+an Altana wallet can hire and pay any BNB agent** (this page), and any agent
+built with Altana can charge them (see [Sell over x402](/sdk/x402-server)).
+
+ERC-8183 is a job escrow: the buyer funds a Job in $U against a seller's
+address, the seller submits a deliverable, and the escrow releases after an
+optimistic dispute window. If the seller never delivers, the buyer reclaims
+the full escrow after expiry.
+
+### Hire an agent
+
+```ts
+import { hireErc8183Agent, BNB } from "@altananetwork/sdk";
+
+const { jobId } = await hireErc8183Agent(wallet, signer, {
+  provider: "0xSellerAgentAddress",
+  task: "Audit wallet 0x…'s Venus position and recommend an action.",
+  budget: 100_000_000_000_000_000n, // 0.1 $U (18 decimals)
+}, { network: BNB });
+```
+
+One call runs the whole buyer flow — `createJob`, `registerJob` (binds the
+dispute policy), `setBudget`, `approve $U`, `fund` — as **one atomic relay
+intent**. The session-key path works too (`hireErc8183Agent(session, params,
+opts)`), so a scoped key with an on-chain spend limit caps what an autonomous
+agent can ever escrow.
+
+### Track the job and fetch the deliverable
+
+```ts
+import { getErc8183Job, getErc8183DeliverableUrl } from "@altananetwork/sdk";
+
+const job = await getErc8183Job(BNB, jobId);       // OPEN → FUNDED → SUBMITTED → COMPLETED
+if (job.submittedAt > 0n) {
+  const url = await getErc8183DeliverableUrl(BNB, jobId);
+  const manifest = await (await fetch(url)).json(); // manifest.response.content
+}
+```
+
+The on-chain `job.deliverable` is the keccak256 of the canonical manifest —
+verify it before trusting the content.
+
+### Settle, dispute, or reclaim
+
+```ts
+import { settleErc8183Job, buildClaimRefundCall } from "@altananetwork/sdk";
+
+await settleErc8183Job(wallet, signer, { jobId }, { network: BNB });          // release escrow (after the window)
+await settleErc8183Job(wallet, signer, { jobId, action: "dispute" }, opts);   // contest (inside the window)
+await execute(wallet, signer, buildClaimRefundCall(56, jobId), opts);         // full refund after expiry
+```
+
+### Contract registry
+
+`ERC8183_ADDRESSES` exports the kernel (AgenticCommerce), EvaluatorRouter,
+OptimisticPolicy, ERC-8004 registry, and $U token for BSC mainnet (56) and
+testnet (97). The MCP server exposes the same flow as tools:
+`erc8183_create_job`, `erc8183_job_status`, `erc8183_settle` — see
+[MCP Tools](/mcp/tools).
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## Errors
+
+Two different things can go wrong, and they surface differently.
+
+**Failures before submission throw.** Bad configuration, an unsupported signer, a chain with no relay. These are JavaScript `Error`s with a message string. Catch them with `try/catch`.
+
+**Failures at or after submission do not throw.** [`execute`](/sdk/execute) and [`revokeSession`](/sdk/revoke-session) return an `ExecuteResult` with `status: "FAILED"`. Nothing is raised. If you only wrap calls in `try/catch`, you will not notice these.
+
+```ts
+const result = await client.execute({ wallet, signer, calls });
+if (result.status !== "CONFIRMED") {
+  // Handle it here. No exception was thrown.
+}
+```
+
+[`grantSession`](/sdk/grant-session) is the exception: it throws `Session grant did not confirm: status=<status>` rather than returning a failed result, because there is no useful `Session` object to hand back.
+
+### Reading `ExecuteResult`
+
+```ts
+type ExecuteResult = {
+  callsId: Hex;
+  status: "CONFIRMED" | "FAILED" | "PENDING";
+  transactionHash?: Hex;
+};
+```
+
+| Status      | Meaning                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------- |
+| `CONFIRMED` | Included and succeeded. `transactionHash` is populated.                                 |
+| `FAILED`    | The relay reported the bundle as failed. No reason, no receipt, no `transactionHash`.   |
+| `PENDING`   | Either you passed `noWait: true`, or the SDK polled for four minutes without a verdict. |
+
+:::warning[`PENDING` means two very different things]
+With `noWait: true` you get `PENDING` immediately: that is expected, and you poll later using `callsId`.
+
+Without it, `PENDING` means the SDK polled the relay every 2 seconds for 240 seconds and never saw `CONFIRMED` or `FAILED`. Relay errors during that window are swallowed and retried, so a relay that is down for the whole four minutes is indistinguishable from one that is merely slow. Both surface as `PENDING`.
+
+Treat an unexpected `PENDING` as unknown, not as failed. The bundle may still land. Poll `callsId` before retrying, or you risk submitting the same intent twice.
+:::
+
+### `FAILED` carries no reason
+
+The SDK returns `{ status: "FAILED" }` and nothing else. There is no revert string, no error code, and no receipt to inspect. Diagnosis is by elimination, using the table below.
+
+If you need the onchain reason, look up the userOp yourself. You have `callsId`; the wallet address and chain are yours. Search the wallet address on the chain's explorer ([BscScan](https://bscscan.com) for BNB, [Etherscan](https://etherscan.io) for Ethereum) and inspect the most recent transaction to the account. The revert reason is in the trace.
+
+#### Telling the failure classes apart
+
+| What went wrong                                                                                                            | How to recognize it                                                                                                                                                                | Fix                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| **Policy revert.** The session exceeded its spend cap, called a contract outside `permissions.calls`, or is past `expiry`. | The session worked before and stopped, or fails only for certain calls or amounts. Read the key onchain with `isValidKey`; check your `spend` limits against the token's decimals. | Grant a new session with the right scope. Permissions are fixed at grant and cannot be widened. |
+| **Wrong decimals in a spend cap.** A cap orders of magnitude smaller than intended.                                        | Small payments revert against a limit that reads as generous. Extremely common on BNB Chain, where stablecoins use 18 decimals rather than 6.                                      | See the decimals warning on [grantSession](/sdk/grant-session).                                 |
+| **Unfunded counterfactual wallet.** The wallet has no native balance to pay for the first transaction.                     | Happens on the very first `execute` for a new wallet. `createWallet` does not touch the chain, so the address exists but holds nothing.                                            | Send native tokens to `wallet.address` first. See [createWallet](/sdk/create-wallet).           |
+| **Session not byte-exact.** The stored `Session` no longer matches what was granted.                                       | Every `execute` with that session fails, including ones that previously worked. Usually follows a JSON round-trip that turned bigints into numbers.                                | Persist the `Session` verbatim. See [Sessions](/concepts/sessions).                             |
+| **Relay rejection.** The relay refused or dropped the bundle.                                                              | Often accompanies malformed input, since validation beyond client configuration happens relay-side rather than in the SDK.                                                         | Check the call shape, then retry.                                                               |
+
+### Errors the SDK throws
+
+There is no error class and no error code: every one of these is a plain `Error`, so match on the message if you must branch on them.
+
+#### Configuration
+
+| Message                                                                       | Cause                                                    |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `createClient: at least one chain is required.`                               | Empty `chains` array.                                    |
+| `createClient: duplicate chainId <id> in chains.`                             | The same chain passed twice.                             |
+| `createClient: defaultChainId <id> is not one of the configured chains (...)` | `defaultChainId` names a chain you did not configure.    |
+| `Chain <id> is not configured on this client. Configured chains: ...`         | A `chainId` argument the client does not hold.           |
+| `createWallet: at least one network is required.`                             | Empty `networks`. Also applies to `createPasskeyWallet`. |
+
+#### Chain and relay
+
+| Message                                                     | Cause                                                                                                                           |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `No Altana relay serves chain <id> (<name>). ...`           | The chain has no relay and cannot execute. `BASE` is read-only in this sense: it is an L2 cache target, not an execution chain. |
+| `Balance for <address> did not reach <n> wei within <ms>ms` | A funding wait timed out.                                                                                                       |
+
+#### Signers
+
+Passing a signer the SDK cannot use produces a multi-line message naming every supported constructor, e.g. *"Injected wallet signers (e.g. MetaMask) need to sign a transaction but the current build of @altananetwork/sdk doesn't accept them as a signer type."* Use `signerFromPrivateKey`, `createPrivateKeySigner`, `createPasskey`, or `createHeadlessPasskey`.
+
+#### Cross-chain sync
+
+| Message                                                                | Cause                                                                                   |
+| ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `syncKeyToL2: tx reverted (L1Block anchor moved); refresh to retry`    | The L1 anchor advanced between proof construction and inclusion. Call again.            |
+| `ensureKeyCached: L2 did not anchor past L1 block <n> within <ms>ms`   | Base did not catch up within 5 minutes. Base normally anchors 1 to 3 minutes behind L1. |
+| `L2 L1Block predeploy reports zero hash — chain not anchored yet`      | The L2 has no anchored L1 block.                                                        |
+| `l2WalletClient has no account configured` / `... no chain configured` | The L2 wallet client is missing an account or chain.                                    |
+
+#### Recovery
+
+`recoverFromPasskey` needs at least one active key in Keystore, which means the wallet must have executed at least once. A wallet that was created but never used has nothing to recover from.
+
+### Related
+
+* [execute](/sdk/execute) for the call itself
+* [Sessions](/concepts/sessions) for what makes a session valid
+* [createWallet](/sdk/create-wallet) for counterfactual wallets and funding
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## execute
+
+Submit one or more calls from a wallet. `client.execute` accepts either an admin pair (`wallet` + `signer`) or a `session`, plus the `calls` to run.
+
+### Keystore impact
+
+| Scenario                                | Touches Keystore?                         |
+| --------------------------------------- | ----------------------------------------- |
+| First admin `execute` on a fresh wallet | Yes (admin key registered)                |
+| Subsequent admin `execute` calls        | No                                        |
+| Any session `execute`                   | No (session was registered at grant time) |
+
+### Admin path
+
+The wallet's admin signs the intent. Use this for first-party operations.
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const signer = signerFromPrivateKey("0x...");
+const wallet = await client.createWallet({ signer });
+
+const result = await client.execute({
+  wallet,
+  signer,
+  calls: { to: "0xRecipient...", value: 1_000_000_000_000_000n }, // 0.001 BNB on BNB Smart Chain
+});
+
+console.log(result.status, result.transactionHash);
+```
+
+### Session path
+
+A session signs the intent. Use this for agent-driven operations.
+
+```ts
+// `client` and `session` from grantSession
+const result = await client.execute({
+  session,
+  calls: [{ to: "0xUniswapRouter...", data: "0x...", value: 0n }],
+});
+```
+
+### Parameters
+
+```ts
+client.execute(opts: ClientExecuteOptions): Promise<ExecuteResult>;
+
+type ClientExecuteOptions =
+  | {
+      wallet: Wallet;
+      signer: Signer;
+      calls: Call | readonly Call[];
+      feeToken?: Address;  // default: native token
+      noWait?: boolean;    // return as soon as submitted, don't wait for confirmation
+      chainId?: number;    // defaults to the client's default chain
+    }
+  | {
+      session: Session;
+      calls: Call | readonly Call[];
+      feeToken?: Address;
+      noWait?: boolean;
+      chainId?: number;
+    };
+
+type Call = {
+  to: Address;
+  data?: Hex;
+  value?: bigint;
+};
+```
+
+### Returns
+
+```ts
+type ExecuteResult = {
+  callsId: Hex;
+  status: "CONFIRMED" | "FAILED" | "PENDING";
+  transactionHash?: Hex;
+};
+```
+
+A failed execute **returns** `status: "FAILED"`; it does not throw. Check the status rather than relying on `try/catch`. See [Errors](/sdk/errors) for what each status means and how to tell the failure classes apart.
+
+### Notes
+
+* **First execute on a fresh wallet auto-registers the admin key** in [Keystore](/concepts/keystore). `initialRegisterKey` is prepended transparently in the same userOp.
+* **Empty calls is rejected.** `client.execute({ wallet, signer, calls: [] })` errors. Pass at least one call.
+* **Session execute is byte-exact.** The session's `permissions + expiry + publicKey` must match what was committed at grant. Persist the `Session` object verbatim; sloppy JSON round-trips (bigints to numbers, key reordering) break the match.
+* **`chainId` selects the chain.** Omit it to use the client's default chain; pass one of the client's configured chains to target another.
+* With `noWait: true`, you get `status: "PENDING"` and a `callsId` to poll later.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## grantSession
+
+Grant a scoped session key for a wallet. The admin signer authorizes the session onchain; from that point forward the session can act on the wallet within its permissions, enforced onchain.
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const admin = signerFromPrivateKey("0x...");
+const wallet = await client.createWallet({ signer: admin });
+
+const session = await client.grantSession({
+  wallet,
+  signer: admin,
+  permissions: {
+    calls: [{ to: "0xUniswapRouter..." }],
+    spend: [{
+      limit: 50n * 10n ** 18n,    // 50 USDT. Note: 18 decimals on BNB Chain.
+      period: "day",
+      token: "0xUSDT...",
+    }],
+  },
+  expiry: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
+});
+
+// Hand `session` to whichever process runs the agent.
+```
+
+:::warning[Spend limits are raw token units, and decimals differ by chain]
+`limit` is denominated in the token's smallest unit, so you need that token's decimals on that chain. USDT and USDC use **18 decimals on BNB Chain** and 6 on Ethereum. Writing `100_000_000n` for "100 USDT" on BNB sets a cap of 0.0000000001 USDT, and the agent's payments revert against a limit that looks generous.
+:::
+
+### Registering the session key
+
+The session's public key is written to [Keystore](/concepts/keystore) via the Controller, batched into the same userOp — controlled by the `register` flag, on by default. Registration is what makes the key's authority **provable to anyone**:
+
+* **Third parties can verify it on-chain** — other agents, counterparties, dashboards, and compliance tools can check the key's authority, expiry, and revocation state (`getKeys` / `isValidKey`, or the MCP `verify_authorization` tool) without trusting you or Altana. Reads are free and unlimited.
+* **Keys are discoverable** — a wallet's keys can be enumerated from chain for recovery and auditing.
+* **Grants and revokes leave an on-chain trail** — timestamped, monotonic revocation.
+* **(Ethereum)** one registration extends across chains via [`ensureKeyCached`](/sdk/sync-to-l2).
+
+To skip registration (and its one-time fee), pass `register: false`. The session works the same, but Keystore readers like `verify_authorization` won't see it. Register it later at any time:
+
+```ts
+await client.registerSessionKey({ wallet, signer: admin, session });
+```
+
+### Parameters
+
+```ts
+client.grantSession(opts: ClientGrantSessionOptions): Promise<Session>;
+
+type ClientGrantSessionOptions = {
+  wallet: Wallet;
+  signer: Signer;                  // the wallet's admin signer
+  permissions: SessionPermissions;
+  /** Unix epoch seconds. Most apps use Date.now()/1000 + N. */
+  expiry: number;
+  /** Bring your own session signer, or omit to let the SDK generate one. */
+  sessionSigner?: Signer;
+  /** Register the key in Keystore (default true). */
+  register?: boolean;
+  /** Fee token (default: native token). */
+  feeToken?: Address;
+  /** Target chain. Defaults to the client's default chain. */
+  chainId?: number;
+};
+```
+
+See [Sessions](/concepts/sessions) for the full permission shape reference.
+
+### Returns
+
+```ts
+type Session = {
+  walletAddress: Address;
+  signer: Signer;          // session key. Agent signs with this.
+  publicKey: Hex;
+  permissions: SessionPermissions;
+  expiry: number;
+};
+```
+
+### What lands onchain
+
+In a single userOp:
+
+1. The session's public key is registered in [Keystore](/concepts/keystore), making it discoverable by any tool.
+2. The session is authorized on the wallet's smart account with its permissions hash.
+
+Both happen atomically. There is no intermediate state where one exists without the other.
+
+### Notes
+
+* **Persist the full `Session` object**, not just `publicKey`. The agent needs `permissions + expiry` byte-exact at execute time.
+* If you generated the session signer (omitted `sessionSigner`), persist `session.signer` securely. Losing it means the session can no longer sign.
+* **`permissions.calls` omitted = unrestricted.** Always set both `calls` and `spend` unless you specifically want an open-scope session.
+
+
+## SDK Reference
+
+The Altana SDK is a TypeScript library for creating noncustodial agentic wallets, granting scoped sessions, and executing transactions onchain. It runs anywhere JavaScript runs, including servers, browsers, and agent runtimes, with no API key and no hosted backend.
+
+```bash
+npm install @altananetwork/sdk viem
+```
+
+New to the SDK? Start with [Setup: BNB Smart Chain](/sdk/bnb), Altana's default network, then follow [Create an agentic wallet](/getting-started/create-agentic-wallet) for the full walkthrough.
+
+### Wallets
+
+| Function                                            | What it does                                                                                                                               |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`createWallet`](/sdk/create-wallet)                | Create a counterfactual smart-account wallet for a private key signer. The admin key is registered in the Keystore on the first `execute`. |
+| [`createPasskeyWallet`](/sdk/create-passkey-wallet) | Create a wallet whose admin key is a passkey (Face ID, Touch ID, Windows Hello).                                                           |
+| [`recoverFromPasskey`](/sdk/recover-from-passkey)   | Reconnect to an existing passkey wallet from a new device or session.                                                                      |
+
+### Sessions & Execution
+
+| Function                               | What it does                                                                               |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [`grantSession`](/sdk/grant-session)   | Authorize an agent key with scoped permissions: spend caps, allowed contracts, expiry.     |
+| [`execute`](/sdk/execute)              | Send calls from the wallet, signed by the admin key or a session key.                      |
+| [`revokeSession`](/sdk/revoke-session) | Revoke a session key. One transaction; immediate on the chain where the key is registered. |
+
+### Reads & Chains
+
+| Function                             | What it does                                                                  |
+| ------------------------------------ | ----------------------------------------------------------------------------- |
+| [`balances`](/sdk/balances)          | Read native and token balances for a wallet.                                  |
+| [`ensureKeyCached`](/sdk/sync-to-l2) | Prove a key from the L1 Keystore into an L2 cache to authorize across chains. |
+
+### Payments & Signing
+
+| Function                                                    | What it does                                                                     |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [`fetchWithX402`](/sdk/x402)                                | Pay for an HTTP resource from a session key (x402), via Permit2 or EIP-3009.     |
+| [`signOrder`](/sdk/sign-order)                              | Sign an off-chain authorization with a session key (ERC-1271 wrapped signature). |
+| [`approveSignatureChecker`](/sdk/approve-signature-checker) | Authorize which contract may verify a session's signatures on-chain.             |
+| [`approveTokenForPermit2`](/sdk/approve-permit2)            | One-time ERC-20 approval of Permit2 for the permit2 payment rail.                |
+
+### Chain setup
+
+| Page                               | What it covers                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Setup: BNB Smart Chain](/sdk/bnb) | Install, `createClient`, and configuration for multiple chains. Deployed contract addresses live in [Networks & Addresses](/concepts/networks). |
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## recoverFromPasskey
+
+Recover a passkey-backed wallet using onchain state and the OS keychain. **Browser only.**
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+const wallet = await client.recoverFromPasskey({ rpId: "myapp.example" });
+// Browser shows the passkey picker, biometric prompt, done.
+// Two onchain reads, no server, no localStorage required.
+```
+
+### Keystore impact
+
+Recovery is a pure read: two `eth_call`s against Keystore (`getKeys` + `getPublicKey`). No onchain write, no transaction. An app can recover a user's wallet handle a million times a day at zero cost.
+
+### Flow
+
+1. **Discoverable-credential picker.** `allowCredentials: []` tells the OS to show all passkeys saved on this device for the given `rpId`. The user picks one, then completes biometric verification.
+2. **Extract the wallet address.** The assertion's `userHandle` carries the 20-byte wallet address that `createPasskeyWallet` baked in at creation time.
+3. **Read Keystore.** `getKeys(wallet) + getPublicKey(wallet, keyId)` to retrieve the P-256 public key the wallet authorized.
+4. **Rebuild the signer.** From `{ credentialId, publicKey, rpId }`.
+
+Two `eth_call`s, one biometric prompt. No server side-channel.
+
+### Parameters
+
+```ts
+type ClientRecoverFromPasskeyOptions = {
+  /** Relying-Party ID. Must match what was used at creation time. */
+  rpId?: string;
+  /** Target chain to read from. Defaults to the client's default chain. */
+  chainId?: number;
+};
+```
+
+For wallet reads and writes, configure the client with `BNB` or `ETHEREUM`. `BASE` is the exported L2 Keystore cache for verifying Ethereum-granted sessions cross-chain.
+
+### Returns
+
+A `CreateWalletResult` whose `signer` is a `PasskeySigner`. Drop-in compatible with `client.execute`, `client.grantSession`, etc.
+
+### Notes
+
+* **The wallet must have transacted at least once.** Recovery reads the admin key from Keystore, which is populated on the wallet's first `execute`. A wallet that was created but never used isn't yet onchain to recover from.
+* **The `rpId` must match.** Passkeys are scoped to a relying-party ID, usually a domain. If you used `"myapp.example"` at creation, you must use the same here.
+* **No fallback to localStorage.** Recovery is purely onchain plus device-resident. This is what makes Altana wallets durable across machines, browser data wipes, and OS migrations, as long as the passkey is in iCloud Keychain or Google Password Manager.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## revokeSession
+
+Revoke a session key from a wallet onchain. After confirmation, the session's next execute attempt reverts at validation. On the chain where the key is registered the effect is immediate, and no off-chain coordination is required.
+
+If you have mirrored the key to an L2 cache, revocation does **not** reach that cache on its own. See [Cross-chain revocation](#cross-chain-revocation) below.
+
+```ts
+// `client`, `wallet`, `admin`, and `session` from earlier
+await client.revokeSession({ wallet, signer: admin, session });
+```
+
+You can also pass just the session's public key:
+
+```ts
+const sessionPublicKey = "0x04..." as `0x${string}`;
+await client.revokeSession({ wallet, signer: admin, session: sessionPublicKey });
+```
+
+### Keystore impact
+
+Revocation calls Keystore directly, not the Controller. The call is gated onchain by `onlyKeyOwnerOrValidator`, so only the wallet itself (executing inside its own userOp) or a designated validator can revoke a key. A random caller reverts at the modifier.
+
+Revocation is **monotonic**: once a key is revoked, it cannot be reactivated. To restore session access for a wallet, grant a new session with a fresh keypair.
+
+Sessions granted with `register: false` (see [grantSession](/sdk/grant-session)) have no Keystore entry — for those, `revokeSession` skips the Keystore call automatically and revokes the account-level authority alone, which is what actually strips the session's power.
+
+### Parameters
+
+```ts
+client.revokeSession(opts: ClientRevokeSessionOptions): Promise<ExecuteResult>;
+
+type ClientRevokeSessionOptions = {
+  wallet: Wallet;
+  signer: Signer;                 // the wallet's admin signer
+  session: Session | Hex;         // the Session object or just its public key
+  feeToken?: Address;
+  chainId?: number;               // defaults to the client's default chain
+};
+```
+
+### What lands onchain
+
+In a single userOp:
+
+1. The session is **revoked in Keystore** (skipped if the session was never registered). From the next block onward, `isValidKey` returns `false` for that key and the key id is dropped from `getKeys`.
+2. The session's authority on the wallet's smart account is pulled.
+
+Both atomic. After the userOp confirms, the session is dead on that chain: there is no window in which one half has landed and the other has not.
+
+### Cross-chain revocation
+
+`revokeSession` acts on one chain, the one you passed via `chainId` (or the client's default). It does not touch any other chain's state.
+
+:::warning[An L2 cache keeps reporting the old answer until you prove otherwise]
+If the session was mirrored to an L2 cache with [`ensureKeyCached`](/sdk/sync-to-l2), that cache still returns `isValidKey == true` after you revoke on L1. Anyone verifying against the cache, such as a counterparty checking whether your agent is authorized, sees a live key until a post-revocation proof lands.
+
+Call `syncKeyToL2` explicitly after `revokeSession`:
+
+```ts
+import { syncKeyToL2, ETHEREUM, BASE } from "@altananetwork/sdk";
+
+await client.revokeSession({ wallet, signer: admin, session });
+
+// Push the revocation to every L2 cache holding this key. The clients are the
+// same ones ensureKeyCached takes — see /sdk/sync-to-l2 for how to build them.
+await syncKeyToL2({
+  l1Client, l2Client, l2WalletClient,
+  l1KeyStore: ETHEREUM.keyStore,
+  l2Cache: BASE.keyStoreCache,
+  user: session.walletAddress,
+  publicKey: session.publicKey,
+});
+```
+
+`ensureKeyCached` will **not** do this for you. It returns early when the cache reports the key as valid, which is exactly the state a stale cache is in after a revocation. Use `syncKeyToL2`, which always submits a fresh proof.
+:::
+
+Once the cache observes `revoked=true` it cannot be flipped back, even by a proof against an older L1 block. See [ensureKeyCached](/sdk/sync-to-l2) for the full cross-chain model.
+
+### Notes
+
+* Revocation does not require the session signer, only the wallet's admin signer.
+* You can keep just the session's public key in your records for revocation purposes, then discard the rest of the `Session` object once granted.
+* A failed revocation **returns** `status: "FAILED"` rather than throwing. Check the returned status; do not assume success because nothing was raised. See [Errors](/sdk/errors).
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## signOrder
+
+Produce an [ERC-1271](/concepts/off-chain-signatures) signature over an application digest, wrapped in the account's nested envelope so the wallet's `isValidSignature` accepts it. Offline and chain-independent — used for x402 payments, Permit2, EIP-3009, and intent-DEX orders.
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+import { hashTypedData } from "viem";
+
+const client = createClient({ chains: [BNB] });
+
+// From a raw digest:
+const sig = await client.signOrder({ session, appDigest: "0x…" });
+
+// Or from EIP-712 typed data (hashed for you):
+const sig2 = await client.signOrderTypedData({ session, typedData });
+```
+
+`signOrderTypedData({ session, typedData })` is exactly `signOrder({ session, appDigest: hashTypedData(typedData) })`.
+
+### Parameters
+
+```ts
+client.signOrder(opts: { session: Session; appDigest: Hex }): Promise<Hex>;
+client.signOrderTypedData(opts: { session: Session; typedData: TypedDataDefinition }): Promise<Hex>;
+```
+
+### Returns
+
+A `Hex` signature — the wrapped envelope `innerSig ‖ keyHash ‖ prehash` (98 bytes for a secp256k1 session key; a WebAuthn envelope for passkey sessions). Verify it by calling the wallet's `isValidSignature`, **not** `ecrecover`.
+
+### Notes
+
+* The signer must be a session key on the wallet (secp256k1 or passkey).
+* For the signature to *verify*, the calling contract must be an approved checker for the session — see [approveSignatureChecker](/sdk/approve-signature-checker).
+* Works identically across chains; the nested account domain is stripped to `verifyingContract`.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## ensureKeyCached
+
+A session you granted on Ethereum via [`grantSession`](/sdk/grant-session) is registered in the [Keystore](/concepts/keystore) on L1. For another chain to honor that session, the registry state has to be mirrored to an L2 cache on that chain. `ensureKeyCached` does that.
+
+This page is about the Ethereum → Base path specifically. Sessions granted on BNB Smart Chain, the SDK default, live in that chain's standalone Keystore and do not use this flow.
+
+It's idempotent: if the L2 cache already has the key, it returns immediately. Otherwise it waits for the L2 to anchor past the relevant L1 block, then submits a storage proof.
+
+Call it yourself before the first action on an L2; [`execute`](/sdk/execute) does not call it for you. Base is a verification target only: it hosts a cache and no relay, so `BASE` cannot be passed to `createClient`.
+
+```ts
+import { ensureKeyCached, ETHEREUM, BASE } from "@altananetwork/sdk";
+import { createPublicClient, createWalletClient, http } from "viem";
+import { mainnet, base } from "viem/chains";
+import { privateKeyToAccount } from "viem/accounts";
+
+const l1Client = createPublicClient({ chain: mainnet, transport: http(ETHEREUM.publicRpcUrl) });
+const l2Client = createPublicClient({ chain: base, transport: http(BASE.publicRpcUrl) });
+
+// The L2 wallet client pays L2 gas to submit the proof. This can be ANY
+// account with L2 native ETH — your own EOA, a backend relayer, a per-user
+// funded address, etc. The proof is permissionless; no privilege is granted.
+const l2WalletClient = createWalletClient({
+  account: privateKeyToAccount(relayerKey),
+  chain: base,
+  transport: http(BASE.publicRpcUrl),
+});
+
+await ensureKeyCached({
+  l1Client,
+  l2Client,
+  l2WalletClient,
+  l1KeyStore: ETHEREUM.keyStore,
+  l2Cache: BASE.keyStoreCache,
+  user: session.walletAddress,
+  publicKey: session.publicKey,
+  onStatus: (status) => {
+    // "cache-hit" | "waiting-for-anchor" | "submitting-proof" | "done"
+    console.log(status);
+  },
+});
+
+// Session is now valid on Base. Subsequent agent actions are instant.
+```
+
+### What it does
+
+1. Reads `isValidKey(user, keyId)` on the L2 cache. If `true`, returns immediately (`cache-hit`).
+2. Otherwise polls the L2's `L1Block` predeploy until it points to an L1 block that contains the registration (`waiting-for-anchor`). Base anchors \~1–3 min behind L1.
+3. Fetches an `eth_getProof` against L1 for the packed Key storage slot, RLP-encodes the L1 block header, and submits `populateKey(...)` to the L2 cache (`submitting-proof`).
+4. Reads the cache back and resolves with the populated `CachedKey` (`done`).
+
+The first cross-chain action on a given chain pays this cost once. After the cache is populated, the L2 reads it locally without further L1 round-trips.
+
+### Who pays L2 gas
+
+The submitter of `populateKey` pays. The op is permissionless on the contract, so anyone can land a valid proof, but *someone* has to send the L2 tx. Practically:
+
+* **A relayer EOA you control.** Simplest in v0. Fund a single address on each L2 and have your backend submit proofs on demand.
+* **The user themselves**, if they already hold L2 native ETH. Pass their `WalletClient`.
+* **A future bundler-batched flow** that includes `populateKey` as the first call of the L2 userOp. Not wired into `execute` yet.
+
+There's no on-protocol relayer. The cache contract is just a verifier.
+
+### Parameters
+
+```ts
+function ensureKeyCached(args: EnsureKeyCachedArgs): Promise<CachedKey>;
+
+type EnsureKeyCachedArgs = {
+  /** Public client on the L1 chain (Ethereum). Used for eth_getProof + block lookup. */
+  l1Client: PublicClient;
+  /** Public client on the L2 chain. Used for L1Block read + receipt wait. */
+  l2Client: PublicClient;
+  /** Wallet client on the L2 chain — the relayer that pays L2 gas. */
+  l2WalletClient: WalletClient;
+  /** L1 Keystore address. From ETHEREUM.keyStore. */
+  l1KeyStore: Address;
+  /** L2 cache address. From BASE.keyStoreCache. */
+  l2Cache: Address;
+  /** Wallet whose key is being mirrored — the smart account that registered on L1. */
+  user: Address;
+  /** SEC1-encoded public key bytes for the session being mirrored. */
+  publicKey: Hex;
+  /** Progress callback for the four lifecycle states. */
+  onStatus?: (status: EnsureKeyCachedStatus) => void;
+  /** Poll cadence while waiting for L2 to anchor. Default 3s. */
+  anchorPollIntervalMs?: number;
+  /** Max wait for the L1 anchor. Default 5 minutes. */
+  anchorTimeoutMs?: number;
+};
+
+type EnsureKeyCachedStatus =
+  | "cache-hit"
+  | "waiting-for-anchor"
+  | "submitting-proof"
+  | "done";
+```
+
+### Returns
+
+```ts
+type CachedKey = {
+  publicKey: Hex;
+  revoked: boolean;
+  expiry: number;             // unix seconds, 0 = never expires
+  isRoot: boolean;
+  sourceBlockHash: Hex;
+  sourceBlockNumber: bigint;
+};
+```
+
+The `sourceBlockHash` / `sourceBlockNumber` fields record which L1 block the cache state was proven against, useful for monitoring how stale the L2 view is.
+
+### Related helpers
+
+`ensureKeyCached` is the function most apps want. The lower-level helpers are also exported for cases where you want explicit control:
+
+```ts
+// Always submit a fresh proof regardless of cache state. Use to propagate a
+// revocation you just landed on L1 without waiting for the next cache miss.
+syncKeyToL2(args): Promise<{ txHash: Hex; cachedKey: CachedKey }>;
+
+// Pure read against the L2 cache. Returns zeroed struct if not yet populated.
+readCachedKey(l2Client, l2Cache, user, keyId): Promise<CachedKey>;
+
+// Pure read: cache has the key AND it's not revoked AND not expired.
+// Equivalent to KeyStoreCache.isValidKey(user, keyId).
+isCachedKeyValid(l2Client, l2Cache, user, keyId): Promise<boolean>;
+```
+
+### Notes
+
+* **L1 Keystore is the source of truth.** The L2 cache is only as fresh as the last proof submitted. Revocations on L1 do **not** propagate automatically; until someone submits a post-revocation proof, the L2 cache still reports the key as valid. Call `syncKeyToL2` right after [`revokeSession`](/sdk/revoke-session) to push the revocation through. Do **not** expect `ensureKeyCached` to handle it: it returns early whenever the cache reports the key as valid, which is precisely the stale state left behind by a revocation, so it will never submit the proof that would correct it.
+* **Monotonic revoke is enforced cache-side too.** Once the cache observes `revoked=true`, it cannot be flipped back to live by a later proof: even one against an older L1 block. This prevents replay attacks during the L1→L2 anchor window.
+* **The cache is permissionless.** Any address can submit a proof for any `(user, publicKey)` pair. There is no admin and no relayer registry.
+* **One cache per chain.** For the supported L2 cache today, use `BASE.keyStoreCache`; see the [Chains](/concepts/keystore#chains) table.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK · Payments</Eyebrow>
+
+## Sell over x402
+
+`@altananetwork/x402-server` is the seller side of x402/B402: put one guard in
+front of any HTTP route and it becomes a paid capability with instant
+on-chain settlement. It is payable out of the box by **BNB Agent Studio
+agents** (`bag x402 trust` → `bag x402 buy`), **Altana wallets**
+([`fetchWithX402`](/sdk/x402) / the MCP `x402_request` tool), and anything
+else speaking the B402 v2 wire.
+
+```bash
+npm install @altananetwork/x402-server viem
+```
+
+```ts
+import { createX402Merchant, U_TOKEN, USDT_BSC } from "@altananetwork/x402-server";
+
+const merchant = createX402Merchant({
+  chainId: 56,
+  payTo: "0xYourAltanaSmartAccount",          // earnings land here
+  price: 200_000_000_000_000_000n,            // 0.2 per call (18 dec)
+  minPrice: 50_000_000_000_000_000n,          // clamp floor
+  maxPrice: 2_000_000_000_000_000_000n,       // clamp ceiling
+  rails: [
+    { rail: "eip3009", token: U_TOKEN[56] },  // Studio buyers ($U)
+    { rail: "permit2-exact", token: USDT_BSC, spender: facilitator.address },
+  ],
+  facilitator,                                 // settler EOA — gas only, never holds funds
+  rpcUrl: "https://bsc-dataseed.binance.org",
+  chain: bsc,
+});
+
+Bun.serve({
+  port: 8080,
+  async fetch(req) {
+    const { response, receipt } = await merchant.guard(req);
+    if (response) return response;             // 402 challenge / rejection
+    return Response.json({ data: await doTheWork(), tx: receipt.txHash });
+  },
+});
+```
+
+### How settlement works
+
+| Rail            | Buyer signs                      | Settled via                              |
+| --------------- | -------------------------------- | ---------------------------------------- |
+| `eip3009`       | `TransferWithAuthorization` ($U) | `token.transferWithAuthorization(bytes)` |
+| `permit2-exact` | `PermitWitnessTransferFrom`      | `Permit2.permitWitnessTransferFrom`      |
+
+Funds move directly from the payer to `payTo` — the recipient is **bound into
+the buyer's signature**, so a compromised facilitator key cannot redirect
+earnings. Replay is impossible: nonces burn on-chain. Checker-restricted
+smart-account signatures (Altana session keys) are verified by the settling
+contract itself; invalid payments revert and are refused.
+
+### Compatibility rules for Studio buyers
+
+* Offer `maxTimeoutSeconds ≤ 480` (the default is 300): Studio's signer
+  refuses authorization windows over 600s and backdates `validAfter` by 120s.
+* Studio buyers pay **$U via eip3009 only** — include that rail to be payable
+  by them. `bag x402 trust` requires an https URL in production.
+
+### Buyer envelope dialects
+
+The decoder accepts every dialect on the b402 wire, so you do not need to know
+which client is paying:
+
+* **Permit2 authorizations** arrive either as `payload.permit` with a sibling
+  `payload.from` (Altana buyers) or as `payload.permit2Authorization` with
+  `from` nested inside (b402 buyers). Both decode identically.
+* **The payment header** is read from `X-PAYMENT`, falling back to
+  `PAYMENT-SIGNATURE`, which some b402 clients send instead.
+* **`resource`** in your challenge may be a bare URL string or an object
+  (`{ url, description?, mimeType? }`). It is always emitted as the object form
+  that b402 buyers echo back into their payment.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>SDK</Eyebrow>
+
+## x402 payments
+
+`x402` is an HTTP 402 flow: a server answers `402` with payment requirements, the client signs an authorization, base64-encodes it into an `X-PAYMENT` header, and retries. A facilitator settles the authorization on-chain. `fetchWithX402` does this transparently from a session key — the agent just calls a URL.
+
+Both supported rails verify the session key on-chain via [ERC-1271](/concepts/off-chain-signatures):
+
+* **permit2-exact** (the reliable rail — any token approved to Permit2). Includes Binance **B402**, which binds the recipient with a Permit2 *witness* (`permitWitnessTransferFrom`). Checker = Permit2.
+* **exact / EIP-3009** (the standard x402 wire). Only works for tokens whose EIP-3009 is ERC-1271-aware (Circle FiatTokenV2\_2, e.g. Base/Ethereum USDC). Checker = the token.
+
+### Pay for a resource
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+const client = createClient({ chains: [BNB] });
+// `session` from grantSession; the wallet must have approved Permit2 + the checker (below).
+
+const res = await client.fetchWithX402({
+  session,
+  url: "https://api.example.com/paid-endpoint",
+  // chainId defaults to the client's default chain; override to target another.
+});
+
+console.log(res.status, await res.text()); // 200 + paid content
+```
+
+### One-time provisioning
+
+Before the first payment, the wallet's admin sets up the rail:
+
+```ts
+import { PERMIT2_ADDRESS } from "@altananetwork/sdk";
+
+// permit2-exact rail:
+await client.approveTokenForPermit2({ wallet, signer: admin, token: USDC });      // ERC20 approve(Permit2)
+await client.approveSignatureChecker({ wallet, signer: admin, session, checker: PERMIT2_ADDRESS });
+
+// EIP-3009 rail (checker = the token itself):
+await client.approveSignatureChecker({ wallet, signer: admin, session, checker: USDC });
+```
+
+See [approveTokenForPermit2](/sdk/approve-permit2) and [approveSignatureChecker](/sdk/approve-signature-checker).
+
+### Parameters
+
+```ts
+client.fetchWithX402(opts: ClientFetchWithX402Options): Promise<Response>;
+
+type ClientFetchWithX402Options = {
+  session: Session;
+  url: string;
+  init?: RequestInit;
+  /** Only pay options on this chain when any match. Defaults to the client's chain. */
+  chainId?: number;
+  /** Preferred rail when a chain offers several. Defaults to "permit2". */
+  preferRail?: "permit2" | "eip3009";
+};
+```
+
+Non-402 responses pass through untouched; a 402 is parsed, the best payable option is selected (preferring the requested chain, then the permit2 rail), signed, and retried.
+
+### Lower-level helpers
+
+For servers/facilitators or custom flows, the standalone functions are also exported:
+
+```ts
+import {
+  fetchWithX402,          // fetchWithX402(session, url, init?, { chainId, preferRail })
+  selectX402Requirement,  // choose an option from a 402 `accepts[]`
+  signX402Payment,        // sign one requirement → { header, payload }
+  buildPermit2TypedData,        // plain PermitTransferFrom
+  buildPermit2WitnessTypedData, // permit2-exact PermitWitnessTransferFrom (B402)
+  buildEip3009TypedData,        // TransferWithAuthorization
+  encodeXPaymentHeader,
+  networkToChainId,             // CAIP-2 "eip155:56" → 56
+  normalizeResource,            // 402 `resource` (object or URL string) → { url, ... }
+  PERMIT2_ADDRESS,
+} from "@altananetwork/sdk";
+```
+
+### B402 wire compatibility
+
+Real b402 merchants (CoinMarketCap and the BNB Agent Studio ecosystem) read a
+few envelope fields under different names than the plain x402 sample does.
+`fetchWithX402` and `signX402Payment` emit both dialects, so the same payment is
+readable by b402 merchants and by anything already integrated against Altana:
+
+* **`resource`.** The envelope carries a top-level `resource` object saying what
+  the payment buys, echoed from the 402 body. Merchants reject an envelope
+  without it: CoinMarketCap answers `payment header resource is null`.
+  `fetchWithX402` carries it across automatically, accepting either the object
+  form or a bare URL string, and falling back to the requested URL.
+* **`permit2Authorization`.** Permit2 payloads carry the authorization twice:
+  under `permit` with a sibling `from` (the Altana dialect), and under
+  `permit2Authorization` with `from` nested inside (the b402 dialect). Same
+  values, one signature.
+* **`PAYMENT-SIGNATURE`.** The envelope is sent under both `X-PAYMENT` and
+  `PAYMENT-SIGNATURE`, since some b402 merchants read only the latter.
+
+When passing a requirement to `signX402Payment` yourself, set `resource` on it
+so the envelope carries one.
+
+### Notes
+
+* **Browser limitation.** Third-party x402 endpoints often omit `X-PAYMENT` from CORS `Access-Control-Allow-Headers`, so a browser can't POST the payment. Run `fetchWithX402` server-side.
+* The signature is a 98-byte ERC-1271 envelope, not an EOA signature — see [Off-chain signatures](/concepts/off-chain-signatures). A facilitator must verify via `isValidSignature`.
+
+
+## MCP Server
+
+`@altananetwork/mcp` exposes the SDK as an MCP server. AI hosts like Claude Code, Cursor, and Continue can use it to create wallets, grant sessions, and execute transactions through tools or slash commands.
+
+### When to use it
+
+* You want to **operate** wallets from a chat interface ("create a wallet for me", "grant this bot a daily cap of 0.01 ETH").
+* You're prototyping agent flows and want to test session lifecycles by hand.
+* You're building demos where the user is an AI host, not your code.
+
+If you're writing code, use [`@altananetwork/sdk`](/sdk/bnb) directly. The MCP server is a thin wrapper.
+
+### What it provides
+
+* **17 tools** covering wallet creation, balance, verification, session lifecycle, transactions, x402 payments, ERC-8183 agent jobs, and skills registry discovery.
+* **12 prompts** exposed as slash commands (`/altana-agentic-wallet:create-wallet`, etc.). These cover the wallet and session tools; the payments, jobs, and skills tools are callable by the host but have no slash command. See [Tools](/mcp/tools).
+* **Stateless key handling.** Keys live in your OS keychain, with file/env fallbacks.
+
+### Next
+
+* [Install](/mcp/install). Get the server running in your AI host.
+* [Tools](/mcp/tools). Full reference for every exposed tool.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>MCP Server</Eyebrow>
+
+## Install
+
+### Requirements
+
+[Bun](https://bun.sh) 1.1 or later. `@altananetwork/mcp` ships as TypeScript and runs under Bun, which is why every command below uses `bunx`. Substituting `npx` fails with a TypeScript syntax error rather than a useful message.
+
+### Claude Code
+
+```bash
+claude mcp add altana -- bunx @altananetwork/mcp
+```
+
+That's it. Restart Claude Code; tools and slash commands become available.
+
+To remove:
+
+```bash
+claude mcp remove altana
+```
+
+### Network
+
+The server operates on one chain, selected at startup via the `ALTANA_CHAIN` environment
+variable. It defaults to **BNB Smart Chain**.
+
+| `ALTANA_CHAIN`  | Chain                        |
+| --------------- | ---------------------------- |
+| `bnb` (default) | BNB Smart Chain (56)         |
+| `ethereum`      | Ethereum (1)                 |
+| `bnb-testnet`   | BNB Smart Chain Testnet (97) |
+
+```bash
+# Operate on Ethereum instead of the BNB default
+claude mcp add altana -e ALTANA_CHAIN=ethereum -- bunx @altananetwork/mcp
+
+# Operate on BNB testnet (chain 97) — see the Testnet networks page
+claude mcp add altana -e ALTANA_CHAIN=bnb-testnet -- bunx @altananetwork/mcp
+```
+
+One server process serves one chain. Restart with a different `ALTANA_CHAIN` to switch.
+
+### Cursor / Continue / other hosts
+
+Add this to your host's MCP server config:
+
+```json
+{
+  "mcpServers": {
+    "altana": {
+      "command": "bunx",
+      "args": ["@altananetwork/mcp"]
+    }
+  }
+}
+```
+
+### Keys
+
+Wallet admin keys and session keys live in **separate namespaces** so they can never collide. The server reads each kind from three places, in order.
+
+**Wallet admin keys:**
+
+1. **OS keychain** under service `altana-wallet`. Primary. Written by `create_wallet`.
+2. **`~/.altana/keys.json`** → `wallets[]`. File fallback. Mode 0600.
+3. **`ALTANA_WALLET_<NAME>_PRIVATE_KEY`** env var. Env fallback.
+
+For the default wallet, the convention is `ALTANA_WALLET_DEFAULT_PRIVATE_KEY`.
+
+**Session keys:**
+
+1. **OS keychain** under service `altana-session`. Primary. Written by `grant_session`.
+2. **`~/.altana/keys.json`** → `sessions[]`. File fallback.
+3. **`ALTANA_SESSION_<NAME>_PRIVATE_KEY`** env var.
+
+Altana never sees these keys. They stay on your machine.
+
+
+## Claude Skill
+
+Altana ships a [Claude Code skill](https://docs.anthropic.com/en/docs/claude-code/skills) so any Claude-powered agent can build with `@altananetwork/sdk` correctly out of the box.
+
+### Install
+
+Save the skill into your project (or your user-level skills directory) at `.claude/skills/altana-agentic-wallet/SKILL.md`:
+
+```bash
+mkdir -p .claude/skills/altana-agentic-wallet
+curl -fsSL https://docs.altana.network/skill.md \
+  -o .claude/skills/altana-agentic-wallet/SKILL.md
+```
+
+Restart Claude Code (or open a new conversation) and Claude will load the skill automatically when a prompt matches its triggers.
+
+### When the skill activates
+
+Recognize these patterns:
+
+* "I want an AI agent that can trade / pay / mint on my behalf"
+* "Grant this bot a $50/day spending limit on USDC"
+* "How do two agents verify each other onchain"
+* "Build a wallet that recovers from a passkey"
+* "Non-custodial wallet for my app, but I don't want users to handle seed phrases"
+* "Revoke this key: make sure it can't sign anymore"
+* "Check whether `<address>` is allowed to act on `<wallet>` right now"
+
+### MCP server vs skill
+
+| You are…                                         | Use                                           |
+| ------------------------------------------------ | --------------------------------------------- |
+| Writing TypeScript/JS code that needs wallet ops | `@altananetwork/sdk` SDK (this skill)         |
+| Operating wallets interactively from Claude Code | [`@altananetwork/mcp`](/mcp) server           |
+| Building a UI that signs from the browser        | SDK with `client.createPasskeyWallet`         |
+| Running a local agent that holds its own session | SDK with `client.execute({ session, calls })` |
+
+The full skill content is at [`packages/wallet/SKILL.md`](https://github.com/altananetwork/altana-sdk/blob/main/packages/wallet/SKILL.md) in the SDK repo.
+
+### Not the same as a registry skill
+
+This page is about the Claude Code skill for *writing code* with the SDK. The [Skills Registry](/skills) is a separate catalog of protocol skills that teach a *running* agent how to use PancakeSwap, Venus, Aave, and others through a scoped session. Different audience, different file, same `SKILL.md` format.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>MCP Server</Eyebrow>
+
+## Tools
+
+The Altana MCP server exposes 17 tools. AI hosts call them by name. Eleven of them also have a slash command for users to invoke directly (e.g. `/altana-agentic-wallet:create-wallet`); the rest are host-callable only. See [Slash command equivalents](#slash-command-equivalents).
+
+### Discovery
+
+| Tool           | Purpose                                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `about_altana` | Returns Altana's positioning, Keystore explainer, and SDK surface. AI hosts call this when the user asks "what is Altana". |
+
+### Wallet lifecycle
+
+| Tool             | Purpose                                                                                                                                                                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `create_wallet`  | Generates a new private key, stores it in the OS keychain under the given name, returns the address.                                                                                                                                                                                       |
+| `list_wallets`   | Lists wallet names available on this machine (across keychain, file, env).                                                                                                                                                                                                                 |
+| `wallet_balance` | Reads native + optional ERC-20 balances for a stored wallet (pass `tokens`). [BEP-677](https://github.com/bnb-chain/BEPs/blob/master/BEPs/BEP-677.md) scaled-UI-amount tokens are detected via ERC-165 and their `display` value is scaled automatically; `raw` stays the on-chain amount. |
+| `wallet_execute` | Submits one or more calls signed by the wallet's admin key.                                                                                                                                                                                                                                |
+
+### Verification
+
+| Tool                   | Purpose                                                                |
+| ---------------------- | ---------------------------------------------------------------------- |
+| `wallet_verification`  | Lists all active keys on a wallet from [Keystore](/concepts/keystore). |
+| `verify_authorization` | Answers: is this key/session authorized on this wallet right now?      |
+
+### Session lifecycle
+
+| Tool              | Purpose                                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `grant_session`   | Generates a session key, registers it in Keystore, authorizes it with the given permissions. Returns the session details + keyId. |
+| `list_sessions`   | Lists local session metadata (those granted from this machine).                                                                   |
+| `session_execute` | Submits calls signed by a stored session key.                                                                                     |
+| `revoke_session`  | Deactivates the session in Keystore and pulls onchain authority.                                                                  |
+
+### Agent commerce
+
+| Tool                 | Purpose                                                                                                                                                        |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `x402_request`       | Fetches an HTTP URL, transparently paying an x402/B402 payment challenge with a session key (Permit2 or EIP-3009), and returns the paid resource.              |
+| `erc8183_create_job` | Hires an ERC-8183 seller agent (e.g. any BNB Agent Studio agent): escrows $U against its address for a task — the whole buyer flow as one atomic relay intent. |
+| `erc8183_job_status` | Reads a job's on-chain state; once the seller submits, resolves and fetches the deliverable.                                                                   |
+| `erc8183_settle`     | Releases the escrow to the seller after the dispute window (`approve`), or contests inside it (`dispute`).                                                     |
+
+### Skills
+
+Certified protocol playbooks from the [Altana skills registry](https://github.com/altananetwork/skills). The registry URL defaults to the public repo's main branch and is overridable with the `ALTANA_SKILLS_INDEX_URL` environment variable.
+
+| Tool            | Purpose                                                                                                                                                                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_skills` | Keyword search over the registry (name, description, tags). Returns matching skills with their scope and certification scorecard, ranked by how many query words match. Call when the user asks to trade or interact with a DeFi protocol.                                                  |
+| `get_skill`     | Fetches one skill's full `SKILL.md` playbook by id. The content is integrity checked against the registry's `sha256` before it is returned, so a tampered playbook is rejected rather than followed. Also returns the skill's scope (allowed contracts, suggested spend cap) and scorecard. |
+
+### Slash command equivalents
+
+Eleven of the 17 tools have a matching prompt, exposed as a slash command. One further command, `demos`, lists demo flows and maps to no tool:
+
+| Slash command                            | Calls                           |
+| ---------------------------------------- | ------------------------------- |
+| `/altana-agentic-wallet:about`           | `about_altana`                  |
+| `/altana-agentic-wallet:create-wallet`   | `create_wallet`                 |
+| `/altana-agentic-wallet:list-wallets`    | `list_wallets`                  |
+| `/altana-agentic-wallet:wallet-balance`  | `wallet_balance`                |
+| `/altana-agentic-wallet:wallet-info`     | `wallet_verification`           |
+| `/altana-agentic-wallet:verify-session`  | `verify_authorization`          |
+| `/altana-agentic-wallet:grant-session`   | `grant_session`                 |
+| `/altana-agentic-wallet:list-sessions`   | `list_sessions`                 |
+| `/altana-agentic-wallet:session-execute` | `session_execute`               |
+| `/altana-agentic-wallet:revoke-session`  | `revoke_session`                |
+| `/altana-agentic-wallet:send-tx`         | `wallet_execute`                |
+| `/altana-agentic-wallet:demos`           | listing of available demo flows |
+
+Six tools have no slash command: `x402_request`, `erc8183_create_job`, `erc8183_job_status`, `erc8183_settle`, `search_skills`, and `get_skill`. Ask the host to use them by name instead; typing `/altana-agentic-wallet:x402-request` will not resolve.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { useState, useRef, useCallback } from 'react'
+
+export function CopyPre({ code }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [code])
+
+  return (
+    <div style={{ position: 'relative', margin: '1rem 0' }}>
+      <pre style={{
+        background: 'var(--vocs-color_backgroundDark)',
+        padding: '1rem 3rem 1rem 1rem',
+        borderRadius: '6px',
+        overflowX: 'auto',
+        fontSize: '0.875em',
+        lineHeight: '1.6',
+        margin: 0,
+      }}>
+        <code style={{ fontFamily: 'var(--vocs-fontFamily_mono)' }}>
+          {code.split(/(0x[A-Z][a-zA-Z]+)/g).map((part, i) =>
+            /^0x[A-Z][a-zA-Z]+$/.test(part)
+              ? <span key={i} style={{ color: '#d97706', fontStyle: 'italic' }}>{part}</span>
+              : part
+          )}
+        </code>
+      </pre>
+      <button
+        onClick={copy}
+        title={copied ? 'Copied!' : 'Copy'}
+        style={{
+          position: 'absolute',
+          top: '0.5rem',
+          right: '0.5rem',
+          background: 'var(--vocs-color_background)',
+          border: '1px solid var(--vocs-color_border)',
+          borderRadius: '4px',
+          padding: '0.25rem 0.4rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          color: copied ? 'var(--vocs-color_textSuccess, #22c55e)' : 'var(--vocs-color_textSecondary)',
+          transition: 'color 0.15s',
+        }}
+      >
+        {copied ? (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+    </div>
+  )
+}
+
+export function CopyUrl({ url }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }, [url])
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+      <code style={{
+        background: 'var(--vocs-color_backgroundDark)',
+        padding: '0.2rem 0.5rem',
+        borderRadius: '4px',
+        fontSize: '0.9em',
+        fontFamily: 'var(--vocs-fontFamily_mono)',
+      }}>{url}</code>
+      <button
+        onClick={copy}
+        title={copied ? 'Copied!' : 'Copy'}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          padding: '0.1rem',
+          display: 'inline-flex',
+          alignItems: 'center',
+          color: copied ? 'var(--vocs-color_textSuccess, #22c55e)' : 'var(--vocs-color_textSecondary)',
+          transition: 'color 0.15s',
+        }}
+      >
+        {copied ? (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+    </span>
+  )
+}
+
+export function ToolSelector() {
+  const [tool, setTool] = useState('claude')
+
+  const tabs = [
+    { id: 'claude', label: 'Claude' },
+    { id: 'codex', label: 'Codex' },
+    { id: 'other', label: 'Other AI' },
+  ]
+
+  const tabStyle = (id) => ({
+    padding: '0.5rem 1.4rem',
+    border: '1px solid var(--vocs-color_border)',
+    borderRadius: '6px',
+    background: tool === id ? 'var(--vocs-color_backgroundDark)' : 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontWeight: tool === id ? '600' : '400',
+    fontSize: '0.95rem',
+    transition: 'background 0.15s',
+  })
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '0.5rem', margin: '1.5rem 0 2rem' }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTool(t.id)} style={tabStyle(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Claude ─────────────────────────────────────────── */}
+      {tool === 'claude' && (
+        <div>
+          <h3 style={{ marginTop: 0 }}>Operate wallets by chatting (MCP server)</h3>
+          <p>No code. Add the Altana MCP server to Claude Code and create wallets, grant sessions, and send transactions through chat or slash commands.</p>
+          <CopyPre code={'claude mcp add altana -- bunx @altananetwork/mcp'} />
+          <p>Then in Claude Code:</p>
+          <ul>
+            <li><code>/altana-agentic-wallet:create-wallet</code></li>
+            <li><code>/altana-agentic-wallet:grant-session</code></li>
+            <li><code>/altana-agentic-wallet:send-tx</code></li>
+            <li><code>/altana-agentic-wallet:revoke-session</code></li>
+          </ul>
+          <p>See the <a href="/mcp">MCP Server docs</a> for the full tool reference.</p>
+
+          <hr style={{ margin: '2rem 0', border: 'none', borderTop: '1px solid var(--vocs-color_border)' }} />
+
+          <h3>Let Claude write correct Altana code (Claude Skill)</h3>
+          <p>Drop the skill into your project and Claude writes against the SDK correctly inside Cursor or Claude Code: correct function signatures, the right API surface, no hallucinated methods.</p>
+          <CopyPre code={`mkdir -p .claude/skills/altana-agentic-wallet\ncurl -fsSL https://docs.altana.network/skill.md \\\n  -o .claude/skills/altana-agentic-wallet/SKILL.md`} />
+          <p>See the <a href="/mcp/skill">Claude Skill page</a> for details.</p>
+        </div>
+      )}
+
+      {/* ── Codex ──────────────────────────────────────────── */}
+      {tool === 'codex' && (
+        <div>
+          <h3 style={{ marginTop: 0 }}>Add Altana context to Codex (AGENTS.md)</h3>
+          <p>Codex reads <code>AGENTS.md</code> files in your project for instructions and context. Download the Altana skill file and append it so Codex writes against the SDK correctly.</p>
+          <CopyPre code={'curl -fsSL https://docs.altana.network/skill.md >> AGENTS.md'} />
+          <p>After this, ask Codex to scaffold a wallet, grant a session, or build a trading agent. It will use the correct SDK surface and <code>createClient</code> API.</p>
+
+          <hr style={{ margin: '2rem 0', border: 'none', borderTop: '1px solid var(--vocs-color_border)' }} />
+
+          <h3>Operate wallets via MCP (Codex CLI)</h3>
+          <p>Codex CLI supports MCP servers. Add the Altana server to your Codex config:</p>
+          <CopyPre code={`# ~/.codex/config.yaml\nmcpServers:\n  altana:\n    command: bunx\n    args: ["@altananetwork/mcp"]`} />
+          <p>Then prompt Codex to create a wallet, grant a session, or send a transaction using the Altana tools. See the <a href="/mcp">MCP Server docs</a> for the full tool list.</p>
+        </div>
+      )}
+
+      {/* ── Other AI ───────────────────────────────────────── */}
+      {tool === 'other' && (
+        <div>
+          <h3 style={{ marginTop: 0 }}>Add Altana context to your AI tool</h3>
+          <p>Any AI tool that can read a context or rules file works. Download the Altana skill file and add it wherever your tool reads project instructions.</p>
+          <CopyPre code={'curl -fsSL https://docs.altana.network/skill.md -o altana-skill.md'} />
+          <p>Common destinations by tool:</p>
+          <ul>
+            <li><strong>Cursor:</strong> add to <code>.cursor/rules/</code> or paste into the AI rules panel</li>
+            <li><strong>Windsurf:</strong> add to <code>.windsurfrules</code></li>
+            <li><strong>Gemini CLI:</strong> add to <code>GEMINI.md</code></li>
+            <li><strong>Any tool with a system prompt:</strong> paste the contents directly</li>
+          </ul>
+
+          <hr style={{ margin: '2rem 0', border: 'none', borderTop: '1px solid var(--vocs-color_border)' }} />
+
+          <h3>Add the full docs as context</h3>
+          <p>For a richer context, use the docs' machine-readable file. Paste this URL into your AI or feed it as a context file:</p>
+          <CopyPre code={'https://docs.altana.network/llms-full.txt'} />
+          <p>Then try:</p>
+          <ul>
+            <li>"Using these Altana docs, explain step by step how I would give an AI agent a wallet with a 50 USDC per day spending cap on BNB Smart Chain."</li>
+            <li>"Walk me through letting an agent trade on a DEX with a cap, using Altana."</li>
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+<Eyebrow>Getting Started</Eyebrow>
+
+## Connect an AI tool
+
+### Ask your AI (works with any tool)
+
+The docs publish `llms-full.txt`: a single machine-readable file any AI can read cleanly.
+
+Paste the URL and start asking questions, no setup required.
+
+<CopyUrl url="https://docs.altana.network/llms-full.txt" />
+
+Try prompts like:
+
+* "Using these Altana docs, explain how I would give an AI agent a wallet with a 50 USDC per day spending cap on BNB Smart Chain."
+* "What can I do with Altana that I cannot do with a normal wallet?"
+* "Walk me through letting an agent trade on a DEX with a cap, using Altana."
+
+### Build in your editor
+
+Pick your tool and follow the setup for it.
+
+<ToolSelector />
+
+### Try it
+
+Once the MCP is connected, paste any of these into your Claude or Codex chat:
+
+<div
+  style={{
+background: 'rgba(217, 119, 6, 0.07)',
+border: '1px solid rgba(217, 119, 6, 0.25)',
+borderLeft: '3px solid rgba(217, 119, 6, 0.6)',
+borderRadius: '4px',
+padding: '0.75rem 1rem',
+margin: '1rem 0',
+fontSize: '0.9rem',
+lineHeight: 1.6,
+}}
+>
+  Values in <span style={{ color: '#d97706', fontStyle: 'italic', fontFamily: 'var(--vocs-fontFamily_mono)' }}>orange</span> are placeholders. Replace them with your actual values before sending.
+</div>
+
+<CopyPre code={'Create an agentic wallet for me on BNB Smart Chain'} />
+
+<CopyPre code={'Check the balance of my wallet'} />
+
+<CopyPre code={'Grant a session to agent key 0xYourAgentPubkey with a 0.01 BNB spend cap, expiring in 24 hours'} />
+
+<CopyPre code={'List my active sessions'} />
+
+<CopyPre code={'Execute a transfer of 0.001 BNB to 0xRecipient'} />
+
+<CopyPre code={'Revoke the session for key 0xYourAgentPubkey'} />
+
+See the [MCP Tools reference](/mcp/tools) for the full list of available commands.
+
+### What's next
+
+[Give an agent a wallet and a policy](/use-cases/1-agent-wallet-policy) is the first concrete use case: create an agentic wallet and hand an AI a capped, expiring, revocable key.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+import { useState, useEffect } from 'react'
+import { PasskeyDemo } from '../../components/PasskeyDemo'
+
+export function WalletTabSwitcher() {
+  const [tab, setTab] = useState('passkey')
+
+  useEffect(() => {
+    const show = (id) => {
+      const passkey = document.getElementById('wallet-tab-passkey')
+      const pk = document.getElementById('wallet-tab-private-key')
+      if (passkey) passkey.style.display = id === 'passkey' ? '' : 'none'
+      if (pk) pk.style.display = id === 'private-key' ? '' : 'none'
+    }
+
+    if (window.location.hash === '#private-key') {
+      show('private-key')
+      setTab('private-key')
+      setTimeout(() => {
+        document.querySelector('[data-wallet-tabs]')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }, 50)
+    } else {
+      show('passkey')
+    }
+  }, [])
+
+  const switchTab = (id) => {
+    const passkey = document.getElementById('wallet-tab-passkey')
+    const pk = document.getElementById('wallet-tab-private-key')
+    if (passkey) passkey.style.display = id === 'passkey' ? '' : 'none'
+    if (pk) pk.style.display = id === 'private-key' ? '' : 'none'
+    setTab(id)
+    history.replaceState(null, '', id === 'passkey' ? location.pathname : `#${id}`)
+  }
+
+  const btn = (id) => ({
+    padding: '0.5rem 1.4rem',
+    border: '1px solid var(--vocs-color_border)',
+    borderRadius: '6px',
+    background: tab === id ? 'var(--vocs-color_backgroundDark)' : 'transparent',
+    color: 'inherit',
+    cursor: 'pointer',
+    fontWeight: tab === id ? '600' : '400',
+    fontSize: '0.95rem',
+    transition: 'background 0.15s',
+  })
+
+  return (
+    <div data-wallet-tabs style={{ display: 'flex', gap: '0.5rem', margin: '2rem 0 2rem' }}>
+      <button onClick={() => switchTab('passkey')} style={btn('passkey')}>Passkey</button>
+      <button onClick={() => switchTab('private-key')} style={btn('private-key')}>Private Key</button>
+    </div>
+  )
+}
+
+<Eyebrow>Getting Started</Eyebrow>
+
+## Create an agentic wallet
+
+An agentic wallet gives any authorized agent permissioned access to your onchain assets through Altana's global [Keystore](/concepts/keystore): a public onchain registry of authorized keys.
+
+You own the wallet. Agents get scoped, expiring, revocable keys. Every permission is verifiable by anyone, from any chain, with a free read.
+
+<p className="admin-key-lead">Which admin key type?</p>
+
+<div className="admin-key-grid">
+  <div className="admin-key-card">
+    <span className="admin-key-name">Passkey</span>
+    <p className="admin-key-best"><strong>Best for</strong> consumer apps where a person approves with Face ID or Touch ID.</p>
+    <p className="admin-key-desc">Biometric authentication run in the browser through WebAuthn. The private key is created inside your device's secure hardware and never leaves it.</p>
+  </div>
+
+  <div className="admin-key-card">
+    <span className="admin-key-name">Private key</span>
+    <p className="admin-key-best"><strong>Best for</strong> autonomous agents, backend services, and scripts.</p>
+    <p className="admin-key-desc">A key your own code holds, in an env var, OS keychain, or encrypted file. Altana never sees it. No API key and no hosted backend.</p>
+  </div>
+</div>
+
+<WalletTabSwitcher />
+
+<div id="wallet-tab-passkey">
+  ### Try it live
+
+  Each call hits the Altana SDK against BNB Smart Chain. Your passkey stays on your device.
+
+  <PasskeyDemo />
+
+  ### [Build this into your own app →](/use-cases/1b-passkey-delegates-to-agent#build-this-in-your-own-app)
+
+  Step-by-step code walkthrough for integrating a passkey wallet into your browser app, granting a session to an agent, and revoking it.
+</div>
+
+<div id="wallet-tab-private-key" style={{ display: 'none' }}>
+  ### Get started with the SDK
+
+  #### What you need
+
+  * **Node.js 18+** and npm, bun, or pnpm
+
+  #### Step 1: Install
+
+  ```bash
+  npm install @altananetwork/sdk viem
+  ```
+
+  #### Step 2: Generate your wallet
+
+  Generate a private key, then build a wallet around it. Run this once.
+
+  ```ts
+  import { generatePrivateKey } from "viem/accounts";
+  import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+  const privateKey = generatePrivateKey();
+  console.log("Save this key:", privateKey); // copy and store this somewhere safe
+
+  const signer = signerFromPrivateKey(privateKey);
+  const client = createClient({ chains: [BNB] });
+  const wallet = await client.createWallet({ signer });
+
+  console.log("Wallet address:", wallet.address);
+  ```
+
+  :::info[Save your key before continuing]
+  Copy the value printed for `privateKey`. The SDK never stores key material and has no way to give it back to you later.
+
+  You will need it to sign every future transaction. Lose it and the wallet is gone.
+  :::
+
+  You generate the key yourself here rather than asking the SDK for one, so the key is only ever somewhere you put it.
+
+  #### Step 3: Fund your wallet
+
+  Send BNB to your `wallet.address` before executing.
+
+  <div style={{marginTop: '1em'}}>Fund the address with BNB from any exchange or wallet.</div>
+
+  #### Step 4: Run a transaction
+
+  The first `execute` activates the wallet and registers the admin key in the global [Keystore](/concepts/keystore).
+
+  All in one transaction.
+
+  ```ts
+  const result = await client.execute({
+    wallet,
+    signer,
+    calls: { to: wallet.address as `0x${string}`, value: 0n },
+  });
+
+  console.log(result.status, result.transactionHash);
+  ```
+
+  ***
+
+  ### Already have a private key?
+
+  If you are bringing an existing Ethereum key, use `signerFromPrivateKey` instead of generating a new one.
+
+  Store it in a `.env` file at your project root:
+
+  ```bash
+  # .env  —  add to .gitignore, never commit this file
+  PRIVATE_KEY=0xYourKeyHere
+  ```
+
+  Install dotenv to load it:
+
+  ```bash
+  npm install dotenv
+  ```
+
+  Then use it in your script:
+
+  ```ts
+  import 'dotenv/config'
+  import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+  const client = createClient({ chains: [BNB] });
+  const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+  const wallet = await client.createWallet({ signer });
+
+  console.log(wallet.address);
+  ```
+</div>
+
+***
+
+* [Give an agent a wallet and a policy](/use-cases/1-agent-wallet-policy): grant an AI a scoped, expiring key on this wallet.
+* [Use a passkey wallet as admin, delegate to an agent](/use-cases/1b-passkey-delegates-to-agent): passkey admin grants a capped key to an AI.
+* [Connect an AI tool](/getting-started/build-with-claude): operate wallets via Claude, Codex, or any AI without writing code.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Getting Started</Eyebrow>
+
+## Create a passkey wallet
+
+For consumer apps — wallets secured by Face ID, Touch ID, or Windows Hello. The user sees one biometric prompt; no seed phrase, no browser extension. The private key is generated and stored on the device's secure hardware and never leaves it.
+
+### What you need
+
+* A **frontend project** — React, Vue, vanilla JS, or any framework that runs in a browser
+* **npm, bun, or pnpm** to install packages
+* A browser with biometric support — Chrome, Safari, and Firefox on modern devices all qualify
+
+This runs entirely in the browser. No backend or server required for basic setup.
+
+### 1. Install
+
+```bash
+npm install @altananetwork/sdk viem
+```
+
+`viem` is an Ethereum TypeScript library the SDK uses to talk to the blockchain.
+
+### 2. Create the wallet
+
+```ts
+import { createClient, BNB } from "@altananetwork/sdk";
+
+// BNB is the default wallet execution network.
+// ETHEREUM is also supported; BASE is the L2 verification cache.
+const client = createClient({ chains: [BNB] });
+
+const wallet = await client.createPasskeyWallet({
+  name: "MyApp",          // shown in the OS passkey prompt
+  rpId: "myapp.example",  // your app's domain
+});
+
+console.log(wallet.address); // the wallet's onchain address
+```
+
+The user sees one biometric prompt. After that, `wallet` is a fully usable smart-account handle and `wallet.signer` works with every client method.
+
+### 3. Run a transaction
+
+```ts
+const result = await client.execute({
+  wallet,
+  signer: wallet.signer,
+  calls: { to: "0xRecipient...", value: 1_000_000_000_000_000n }, // 0.001 BNB on BNB Smart Chain
+});
+
+console.log(result.status, result.transactionHash);
+```
+
+Each `execute` triggers one biometric prompt to sign. No popups, no extensions.
+
+### 4. Handle returning users
+
+When a user returns — on any device with their passkeys synced — you can rebuild their wallet from onchain state without storing anything yourself:
+
+```ts
+const wallet = await client.recoverFromPasskey({ rpId: "myapp.example" });
+// OS shows the passkey picker, biometric prompt, done.
+```
+
+Two onchain reads, one biometric. No localStorage, no server, no seed phrase.
+
+### What's next
+
+* [Delegate to an AI agent](/use-cases/1b-passkey-delegates-to-agent) — grant a capped, expiring key to an agent from this passkey wallet.
+* [Create a private-key wallet](/getting-started/private-key) — the agent-side path for scripts and backends.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Getting Started</Eyebrow>
+
+## Create a private-key wallet
+
+For AI agents, backend scripts, and CLI tools — anywhere a biometric prompt doesn't make sense. You supply a private key; Altana creates and manages a smart account around it. No custody, no Altana API key, no off-chain service involved.
+
+### What you need
+
+* **Node.js 18+** and npm, bun, or pnpm
+* **A private key** — a 32-byte hex string starting with `0x` that acts as the wallet's admin credential. You can use an existing key from MetaMask or any Ethereum wallet, generate one with `cast wallet new` (Foundry), or let the SDK generate one for you (shown below). Keep it secret — never commit it to source control.
+
+### 1. Install
+
+```bash
+npm install @altananetwork/sdk viem
+```
+
+`viem` is an Ethereum TypeScript library the SDK uses to talk to the blockchain.
+
+### 2. Store your key
+
+Put the private key in an environment variable, not in your code:
+
+```bash
+export PRIVATE_KEY=0xabc123...
+```
+
+### 3. Create the wallet
+
+```ts
+import { createClient, BNB, signerFromPrivateKey } from "@altananetwork/sdk";
+
+// BNB is the default wallet execution network.
+// ETHEREUM is also supported; BASE is the L2 verification cache.
+const client = createClient({ chains: [BNB] });
+
+const signer = signerFromPrivateKey(process.env.PRIVATE_KEY as `0x${string}`);
+const wallet = await client.createWallet({ signer });
+
+console.log(wallet.address); // your wallet's onchain address
+```
+
+Don't have a key yet? Let the SDK generate one:
+
+```ts
+const wallet = await client.createWallet();
+// wallet.signer holds a freshly generated key.
+// Save it — you'll need it to sign future transactions.
+```
+
+Send funds to `wallet.address` before running a transaction — the wallet is counterfactual and has no balance until you fund it. Fund the address with BNB from any exchange or wallet.
+
+### 4. Run a transaction
+
+```ts
+const result = await client.execute({
+  wallet,
+  signer,
+  calls: { to: "0xRecipient...", value: 1_000_000_000_000_000n }, // 0.001 BNB on BNB Smart Chain
+});
+
+console.log(result.status, result.transactionHash);
+```
+
+The first `execute` on a fresh wallet activates the smart account and registers the admin key onchain, then runs your call — all in one transaction. Every subsequent `execute` is just your calls.
+
+### What's next
+
+* [Give an agent a wallet and a policy](/use-cases/1-agent-wallet-policy) — grant an AI a scoped, expiring key on this wallet.
+* [Create a passkey wallet](/getting-started/passkey) — the end-user path for browser apps.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Introduction</Eyebrow>
+
+## How Altana is Different
+
+There are plenty of "agentic wallet" products. Most of them solve the same surface problem (letting an AI act on a user's wallet) but they all store the authorization state in places only their own stack can read.
+
+Altana inverts that.
+
+**Permissions are first-class onchain objects.** Any app, any agent, any chain that bridges to it can verify who is authorized to act on a wallet, without integrating with a wallet vendor's proprietary API.
+
+### What "agentic wallet" usually means
+
+Most stacks combine:
+
+* a smart-account contract (ERC-4337 or similar) that holds funds
+* a session-key authorization mechanism (the agent signs intents, the wallet validates)
+* a vendor-side coordinator (a backend or proprietary contract) that knows which keys are authorized
+
+The third piece is where the silos live. Two agents on the same user's wallet can't verify each other unless they're both clients of the same vendor. A DEX can't check whether an incoming caller is authorized without integrating per-vendor.
+
+### What Altana does
+
+Altana replaces the vendor-side coordinator with **Keystore: a public onchain registry**.
+
+|                                     | Most agentic wallets                         | Altana                                 |
+| ----------------------------------- | -------------------------------------------- | -------------------------------------- |
+| Who knows which keys are authorized | The vendor's backend or proprietary contract | Anyone reading the onchain registry    |
+| Cross-agent verification            | Requires both agents on the same platform    | One `eth_call` from any client         |
+| Cross-app integration               | Per-vendor SDK                               | Read the registry                      |
+| Revocation                          | A vendor API call                            | One onchain transaction, global effect |
+| Custody                             | Often vendor-side or platform-specific       | Local. The integrator's signer.        |
+
+### Cost model
+
+Keystore splits writes and reads.
+
+* **Writes** register or revoke a key. Done by the wallet itself, batched into the userOp the user was already submitting.
+* **Reads are free and unlimited.** Verifying whether a key is authorized is an `eth_call` against any RPC. An agent can check a million times per second at zero cost.
+
+This is what makes cross-agent and cross-app verification practical at scale. The party doing the verification never pays.
+
+### Concretely, this enables
+
+<table style={{display:'block',borderCollapse:'collapse',overflowX:'auto',marginBottom:'var(--vocs-space_24)'}}>
+  <tbody>
+    <tr>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top',width:'30%'}}><strong>Agent-to-agent verification</strong></td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Two AIs acting on the same wallet can verify each other's authority onchain. No platform in between.</td>
+    </tr>
+
+    <tr style={{backgroundColor:'var(--vocs-color_background2)'}}>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}><strong>Cross-app authorization</strong></td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>A DEX, lending protocol, or orderbook can check whether a key is allowed to act on a wallet, without integrating with any wallet vendor.</td>
+    </tr>
+
+    <tr>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}><strong>One-tx revocation</strong></td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Pulling a key from the registry is a single transaction, effective immediately on that chain, with no off-chain coordination required. L2 caches need a post-revocation proof before they agree.</td>
+    </tr>
+
+    <tr style={{backgroundColor:'var(--vocs-color_background2)'}}>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}><strong>A new class of agent services</strong></td>
+      <td style={{border:'1px solid var(--vocs-color_tableBorder)',fontSize:'var(--vocs-fontSize_td)',padding:'var(--vocs-space_8) var(--vocs-space_12)',verticalAlign:'top'}}>Users hire AI agents through onchain employment contracts. Anyone can verify what an agent is allowed to do, and revoke takes one tx.</td>
+    </tr>
+  </tbody>
+</table>
+
+### What stays the same
+
+* You still get a smart-account wallet with the standard session-key features (scoped permissions, time-bounded expiry, onchain validation).
+* You still use [`grantSession`](/sdk/grant-session), [`execute`](/sdk/execute), [`revokeSession`](/sdk/revoke-session). Same shape as any other session-key SDK.
+* Funds still live in the wallet's smart account. Altana never touches them.
+
+The difference is what surface knows about the authorizations, and that difference is what unlocks the cross-app, cross-agent properties.
+
+### Read more
+
+* [Keystore](/concepts/keystore). The public registry, with code for verifying authorizations.
+* [Sessions](/concepts/sessions). Scoped delegations enforced onchain.
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Concepts</Eyebrow>
+
+## Keystore
+
+**Keystore is a public onchain registry.** For every Altana wallet, it stores which keys are currently authorized to act on it. Anyone (any app, any agent, any chain that bridges to it) can read this state and verify authority without a vendor in the middle.
+
+For how the Keystore fits into the wider system, alongside the account contracts and the intent relay, see the [Altana architecture overview](https://www.altana.network/architecture).
+
+### Why this matters
+
+Traditional wallet vendors keep their authorization state inside proprietary contracts or backend services. Two agents acting on the same user's wallet can't verify each other unless they're both clients of the same vendor.
+
+Keystore inverts this: authorization is the source of truth, onchain, vendor-neutral.
+
+This unlocks:
+
+* **Cross-agent verification.** An agent can verify another agent's authority before delegating work to it.
+* **Cross-app authorization.** A DEX, lending protocol, or orderbook can check whether a key is allowed to act on a wallet, without integrating with any wallet vendor.
+* **One-tx revocation.** Pulling a key from Keystore is a single transaction, effective immediately on that chain. Where the key has been mirrored to an [L2 cache](#reaching-other-chains), the cache needs a post-revocation proof before it agrees.
+
+### Writes vs reads
+
+**Writes (onchain transactions):**
+
+* Registering a key (admin on first `execute`; session on `grantSession` by default, or later via `registerSessionKey`). Goes through the Controller.
+* Revoking a key (`revokeSession`). Calls Keystore directly. **Gated by access control** (`onlyKeyOwnerOrValidator`); only the wallet itself or a designated validator can revoke, so there is no open write surface. Revocation is **monotonic**: a revoked key cannot be reactivated.
+
+**Reads (eth\_call, free, unlimited):**
+
+* Checking which keys are active on a wallet.
+* Verifying whether a given key is currently authorized.
+* Looking up a key's stored public bytes.
+
+Reads are off-chain RPC calls. An agent can verify authorization a million times per second, from any RPC, without paying anything. This is what makes cross-agent and cross-app verification practical at scale.
+
+### How a read works
+
+```ts
+import { createPublicClient, http, keccak256 } from "viem";
+import { bsc } from "viem/chains";
+import { BNB } from "@altananetwork/sdk";
+
+const client = createPublicClient({
+  chain: bsc,
+  transport: http(BNB.publicRpcUrl),
+});
+
+const KEYSTORE_ABI = [{
+  name: "isValidKey",
+  type: "function",
+  stateMutability: "view",
+  inputs: [
+    { name: "user", type: "address" },
+    { name: "keyId", type: "bytes32" },
+  ],
+  outputs: [{ type: "bool" }],
+}] as const;
+
+// A key's id is the keccak256 hash of its SEC1-encoded public key.
+const authorized = await client.readContract({
+  address: BNB.keyStore,
+  abi: KEYSTORE_ABI,
+  functionName: "isValidKey",
+  args: [walletAddress, keccak256(sessionPublicKey)],
+});
+```
+
+A single eth\_call answers: *is this key allowed to act on this wallet right now?*
+
+`isValidKey` folds the three questions that matter into one read: the key exists, it has not been revoked, and it has not expired. To list every key on a wallet rather than check one, read `getKeys(user)`, which returns `bytes32[]`.
+
+The two are not interchangeable. Revoking a key removes it from the `getKeys` list in the same transaction, but **expiry does not**. An expiry is just a stored timestamp, and no transaction fires when it passes, so a long-expired key still appears in `getKeys`. Treat `getKeys` as "keys registered and not revoked" and use `isValidKey` whenever the answer has to account for expiry.
+
+### When the SDK writes to Keystore
+
+| SDK call                          | Write?        | Notes                                                                                                                              |
+| --------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `createWallet`                    | No            | Wallet is counterfactual until first `execute`                                                                                     |
+| `createPasskeyWallet`             | No            | Same as above                                                                                                                      |
+| First `execute` on a fresh wallet | Yes           | Admin key auto-registered via `initialRegisterKey`, batched into your userOp                                                       |
+| Subsequent `execute` calls        | No            | Just your calls                                                                                                                    |
+| `grantSession`                    | Yes (default) | Session public key registered, batched with onchain authorization. `register: false` skips it; add later with `registerSessionKey` |
+| `revokeSession`                   | Yes           | Pulls the session's authority. Revocation is monotonic: once revoked, a key cannot be reactivated.                                 |
+| `recoverFromPasskey`              | No            | Pure read, two eth\_calls                                                                                                          |
+
+All writes are batched into the same userOp as your actual call. You never call Keystore directly through the SDK.
+
+### Reaching other chains
+
+The L1 Keystore is the source of truth. For another chain to honor an authorization, the registry state has to be mirrored to a **cache contract** on that chain.
+
+A cache works as a verifier: it accepts a storage proof against the L1 Keystore, walks it from the L1 block hash exposed by the L2's `L1Block` predeploy down to the relevant slot, and stores the result locally. Once cached, the L2 reads authorization with a single `eth_call`, with no L1 round-trip and no bridge message.
+
+### Chains
+
+| Network         | Chain ID | Role                                                                  |
+| --------------- | -------- | --------------------------------------------------------------------- |
+| BNB Smart Chain | 56       | Standalone Keystore + wallet execution; SDK default                   |
+| Ethereum        | 1        | L1 Keystore source of truth for cross-chain proofs + wallet execution |
+| Base            | 8453     | L2 Keystore cache for cross-chain verification                        |
+
+All three SDK exports are live today: `BNB`, `ETHEREUM`, and `BASE`. BNB and Ethereum support wallet writes. Base is the supported L2 cache/read target for verifying Ethereum-granted sessions cross-chain.
+
+For testnet, the SDK also exports `BNB_TESTNET` (chain 97) — see [Testnet](/concepts/networks/testnet).
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Concepts</Eyebrow>
+
+## Off-chain signatures (ERC-1271)
+
+Most agent actions are live transactions. But some protocols — **x402 HTTP payments**, Permit2, EIP-3009, intent DEXes (CoW, 1inch, Seaport) — need an **off-chain signed authorization** that a third party submits later. An Altana wallet is a smart account, so it can't produce a plain EOA signature; it authorizes via **ERC-1271** `isValidSignature`, and a session key can drive that. Two things make it work.
+
+### 1. The nested digest
+
+An Altana account does **not** verify a signature against the raw application digest (the Permit2 / EIP-3009 / order digest). It re-wraps that digest in a nested EIP-712 envelope keyed to the account address, and verifies the signature against the **wrapped** digest:
+
+```
+nested = keccak256(0x1901 ‖ domainSeparator ‖ structHash)
+  domainSeparator = keccak256(abi.encode(
+                      keccak256("EIP712Domain(address verifyingContract)"), wallet))
+  structHash      = keccak256(abi.encode(
+                      keccak256("ERC1271Sign(bytes32 digest)"), appDigest))
+```
+
+The account's EIP-712 domain is intentionally **stripped to `verifyingContract` only** (no name/version/chainId). The wrapped signature is the account envelope `innerSig ‖ keyHash ‖ prehash` (98 bytes for a secp256k1 session key), **not** a bare 65-byte ECDSA signature — so a verifier must call `isValidSignature`, never `ecrecover`.
+
+The SDK does all of this for you: [`signOrder` / `signOrderTypedData`](/sdk/sign-order) produce the wrapped signature over any app digest.
+
+### 2. The signature-checker gate
+
+A session key's `isValidSignature` returns the ERC-1271 magic value **only when `msg.sender` is an approved checker** for that key (super-admin keys skip the gate). The checker is whichever contract calls `isValidSignature` during verification:
+
+| Rail                    | Checker to approve                     |
+| ----------------------- | -------------------------------------- |
+| Permit2 / permit2-exact | the canonical Permit2 (`0x0000…78BA3`) |
+| EIP-3009                | the token contract (e.g. USDC)         |
+
+Approve it once per session with [`approveSignatureChecker`](/sdk/approve-signature-checker). Without it, verification returns `0xffffffff` even for a perfectly valid signature.
+
+### Putting it together
+
+For an x402 payment the SDK composes both: [`fetchWithX402`](/sdk/x402) signs the payment authorization with the session key (nested digest) and the checker approval lets the facilitator's on-chain settlement verify it. See [x402 payments](/sdk/x402) for the end-to-end flow.
+
+> **Note on facilitators.** A payment can be valid and settleable on-chain yet still be refused by a payment *facilitator* that verifies signatures off-chain assuming an EOA (`ecrecover`). Supporting smart-account payers requires the facilitator to verify via ERC-1271 (`isValidSignature`, optionally ERC-6492 for counterfactual accounts).
+
+
+import { Eyebrow } from '../../components/Eyebrow'
+
+<Eyebrow>Concepts</Eyebrow>
+
+## Sessions
+
+A **session** is a scoped, time-bounded delegation from a wallet's admin key to another key. The session key can act on the wallet, but only within the granted permissions, and only until the expiry.
+
+Permissions are enforced onchain. A session that tries to call a contract outside its allowlist, or spend beyond its cap, reverts at validation time. There is no off-chain trust assumption.
+
+### Anatomy of a session
+
+```ts
+type Session = {
+  walletAddress: Address;       // the wallet this session can act on
+  signer: Signer;               // the session key (agent signs with this)
+  publicKey: Hex;               // identifier onchain
+  permissions: SessionPermissions;
+  expiry: number;               // unix epoch seconds
+};
+
+type SessionPermissions = {
+  calls?: readonly CallPermission[];   // allowed contracts / signatures
+  spend?: readonly SpendPermission[];  // per-token rolling caps
+};
+```
+
+### Permission shapes
+
+**Call permissions** restrict which contracts and methods the session can hit:
+
+```ts
+calls: [
+  { to: "0xUniswapRouter..." },             // any method on this contract
+  { signature: "transfer(address,uint256)" }, // any contract, this method
+  { signature: "swap(...)", to: "0xPool" }, // both, AND semantics
+]
+```
+
+**Spend permissions** cap how much the session can move per token, per rolling period:
+
+```ts
+spend: [
+  { limit: 100_000_000n, period: "day", token: "0xUSDC..." }, // 100 USDC/day on Ethereum (6 decimals)
+  { limit: 10n ** 16n, period: "hour" },                       // 0.01 ETH/hour (native)
+]
+```
+
+`limit` is in the token's smallest unit, so the number depends on that token's decimals **on that chain**. The same stablecoin uses 6 decimals on Ethereum and 18 on BNB Chain: 100 USDT/day on BNB is `100n * 10n ** 18n`, not `100_000_000n`.
+
+### Lifecycle
+
+| Stage  | Function                                  | Keystore impact                                                                                 |
+| ------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Grant  | [`grantSession`](/sdk/grant-session)      | Write. Session public key registered by default (`register: false` skips; registrable later).   |
+| Use    | [`execute(session, calls)`](/sdk/execute) | None.                                                                                           |
+| Verify | Any client reads `isValidKey`             | None. Free, unlimited.                                                                          |
+| Revoke | [`revokeSession`](/sdk/revoke-session)    | Write (gated by `onlyKeyOwnerOrValidator`). Session revoked (monotonic: cannot be reactivated). |
+| Expire | Automatic at `expiry`                     | None. No transaction.                                                                           |
+
+Reads are free and unlimited, which is what makes cross-agent and cross-app verification practical.
+
+### Notes
+
+* **Sessions must be byte-exact on execute.** The session's `permissions + expiry + publicKey` must match what was committed at grant time. Persist the `Session` object verbatim. Sloppy JSON round-trips (bigints to numbers, key reordering) break the match.
+* **`permissions.calls` omitted = unrestricted.** If you don't pass `calls`, the session can call any contract within its spend cap. Set both unless that's truly what you want.
+
+
+## Networks & Addresses
+
+Altana is multi-chain. The SDK ships a config per network, importable from
+`@altananetwork/sdk`. **BNB Smart Chain is the default**; Ethereum is
+supported for wallet execution and L1 cross-chain proofs; Base is supported as the L2
+Keystore cache for cross-chain verification.
+
+Building against testnet? See [Testnet](/concepts/networks/testnet) for BNB
+Smart Chain Testnet.
+
+### Supported SDK exports
+
+| Export     | Network         | Chain ID | Use                                                                    |
+| ---------- | --------------- | -------- | ---------------------------------------------------------------------- |
+| `BNB`      | BNB Smart Chain | 56       | Default wallet execution network with a standalone Keystore            |
+| `ETHEREUM` | Ethereum        | 1        | Wallet execution network and L1 Keystore source for cross-chain proofs |
+| `BASE`     | Base            | 8453     | L2 Keystore cache for cross-chain session verification                 |
+
+### BNB Smart Chain: `BNB`
+
+* **Chain id:** 56
+* **Public RPC:** `https://bsc-rpc.publicnode.com`
+* **Explorer:** [https://bscscan.com](https://bscscan.com)
+* **Relay:** `https://relay.altana.network`
+
+KeyStore contracts:
+
+| Contract           | Address                                      |
+| ------------------ | -------------------------------------------- |
+| KeyStore           | `0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a` |
+| KeyStoreController | `0x0834Ee2C9BdC3E3efF0a2dC34393D4B0e546A555` |
+
+### Ethereum: `ETHEREUM`
+
+* **Chain id:** 1
+* **Public RPC:** `https://ethereum-rpc.publicnode.com`
+* **Explorer:** [https://etherscan.io](https://etherscan.io)
+* **Relay:** `https://relay.altana.network`
+
+| Contract           | Address                                      |
+| ------------------ | -------------------------------------------- |
+| KeyStore           | `0xb70fDa90C1d576Ba8399946a0c10ECD9d9Ea923b` |
+| KeyStoreController | `0x30a188Eecf14F4142B0d828ce838C9E1134e7FaA` |
+
+### Base: `BASE`
+
+Used for cross-chain session-key verification when operating on Ethereum. Not used by BNB.
+
+Base is a verification target, not an execution chain. It hosts a KeyStore cache and no relay, so `BASE` cannot be passed to `createClient` and you cannot send transactions there through the SDK. Use it with [`ensureKeyCached`](/sdk/sync-to-l2) to read Ethereum-granted authority from Base.
+
+| Contract      | Address                                      |
+| ------------- | -------------------------------------------- |
+| KeyStoreCache | `0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a` |
+
+Chain id 8453 · RPC `https://base-rpc.publicnode.com`.
+
+> Addresses are the source of truth in the SDK's
+> [`packages/wallet/src/config.ts`](https://github.com/altananetwork/altana-sdk/blob/main/packages/wallet/src/config.ts).
+> To verify independently, check the addresses above against the explorer-verified
+> sources linked from [Audit reports](/security/audits).
+
+
+## Testnet
+
+Altana's testnet runs on **BNB Smart Chain Testnet (chain 97)** — the full stack
+(keystore, account contracts, and the Altana testnet relay) is deployed there, so
+you can create wallets and execute end-to-end. The SDK ships a ready-made
+`BNB_TESTNET` config, importable from `@altananetwork/sdk`.
+
+The testnet explorer is at [testnet.altana.network](https://testnet.altana.network).
+
+### BNB Smart Chain Testnet: `BNB_TESTNET`
+
+Fund new wallets with test BNB from the
+[BNB testnet faucet](https://testnet.bnbchain.org/faucet-smart) before executing.
+
+* **Chain id:** 97
+* **Public RPC:** `https://bsc-testnet-rpc.publicnode.com`
+* **Explorer:** [https://testnet.bscscan.com](https://testnet.bscscan.com)
+* **Faucet:** [https://testnet.bnbchain.org/faucet-smart](https://testnet.bnbchain.org/faucet-smart)
+* **Relay:** `https://testnet-relay.altana.network`
+
+KeyStore contracts:
+
+| Contract           | Address                                      |
+| ------------------ | -------------------------------------------- |
+| KeyStore           | `0x6b8361C29d05D498b1a12B54A37310f94171E94A` |
+| KeyStoreController | `0xb530D1971f5453F3359518343F05D0AedFfF7e12` |
+
+Account stack (used by the relay):
+
+| Contract               | Address                                      |
+| ---------------------- | -------------------------------------------- |
+| Orchestrator           | `0xcb5CEf3C54aa90e9A7ad602A258D3d360cC862B9` |
+| Delegation proxy       | `0x4F4ddE38Da9F8AbBb96C48cA520b992D4bADc3D6` |
+| Account implementation | `0x33aD2F49ab9f122f5F0FDF579f575724EfF353DE` |
+| Simulator              | `0x3006de101E96e85272d5B5Ad07A9738fa7678008` |
+| Funder                 | `0xb248602EAadd9c3e2Db4575C4e4d58003b7a2740` |
+| Escrow                 | `0xCd075ceb5Cd463a9233a8085fc915767139F655c` |
+
+EXP fee tokens (pay relay fees in a test token instead of native tBNB):
+
+| Token | Address                                      |
+| ----- | -------------------------------------------- |
+| EXP   | `0xa8071DA5e994cB8e3eB56CaD0FBB6ca424dD8dc0` |
+| EXP2  | `0x61727778216127D0843A99A3e91e99C27e9f3BC7` |
+
+> Addresses are the source of truth in the SDK's
+> [`packages/wallet/src/config.ts`](https://github.com/altananetwork/altana-sdk/blob/main/packages/wallet/src/config.ts).
+> To verify independently, check the addresses above against the explorer.
+

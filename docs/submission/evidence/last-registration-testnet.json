@@ -1,0 +1,21 @@
+{
+  "network": "testnet",
+  "chainId": 97,
+  "registryAddress": "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+  "agentId": "1798",
+  "owner": "0x3C8176953eadBeE7b9bF8C6a5d1CF1153D924E11",
+  "transactionHash": "0xa1ae43b60b3405f155d80fec5d37b495f2c87cf8f1e8376925e01f657db8e1d0",
+  "explorerLink": "https://testnet.bscscan.com/tx/0xa1ae43b60b3405f155d80fec5d37b495f2c87cf8f1e8376925e01f657db8e1d0",
+  "scanApiUrl": "https://8004scan.io/api/v1/public/agents/97/1798",
+  "scanUiUrl": "https://8004scan.io/agents/bsc-testnet/1798",
+  "agentUri": "data:application/json;base64,eyJ0eXBlIjoiaHR0cHM6Ly9laXBzLmV0aGVyZXVtLm9yZy9FSVBTL2VpcC04MDA0I3JlZ2lzdHJhdGlvbi12MSIsIm5hbWUiOiJQb3J0Zm9saW8gUmVwb3J0ZXIgdjEiLCJkZXNjcmlwdGlvbiI6IlBvcnRmb2xpbyBSZXBvcnRlcjogbW9uaXRvcnMgYSBCTkIgQ2hhaW4gcG9ydGZvbGlvIChwb3NpdGlvbnMsIExQLCB0cmVhc3VyeSkgYW5kIHB1Ymxpc2hlcyBwbGFpbi1FbmdsaXNoIHJlcG9ydHMgdGhyb3VnaCB0aGUgQWdlbnQgTWFya2V0LiIsImltYWdlIjoiIiwic2VydmljZXMiOlt7InR5cGUiOiJhMmEiLCJ1cmwiOiJodHRwczovL2JuYi1hZ2VudC1tYXJrZXQuZXhhbXBsZS8ud2VsbC1rbm93bi9hZ2VudC1jYXJkLmpzb24ifV0sIng0MDJTdXBwb3J0Ijp0cnVlLCJhY3RpdmUiOnRydWUsInJlZ2lzdHJhdGlvbnMiOltdLCJzdXBwb3J0ZWRUcnVzdCI6WyJyZXB1dGF0aW9uIl19",
+  "agentName": "Portfolio Reporter v1",
+  "x402Support": true,
+  "receipt": {
+    "status": "success",
+    "blockNumber": "124378143",
+    "gasUsed": "622584",
+    "transactionHash": "0xa1ae43b60b3405f155d80fec5d37b495f2c87cf8f1e8376925e01f657db8e1d0"
+  },
+  "registeredAt": "2026-08-11T02:48:48.746Z"
+}

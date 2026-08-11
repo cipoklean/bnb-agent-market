@@ -1,20 +1,67 @@
 # INTEGRATIONS
 
-## ERC-8004 (agent identity)
-- Needs: registry address, ABI, metadata schema. Status: UNKNOWN — adapter interface in packages/erc8004 + src/lib/adapters/erc8004.ts (mock registry data). UI shows identity + track record from adapter output; badge says "On-chain proof of this agent's history."
+Status legend: KNOWN = official addresses/ABIs/SDK verified against docs/mainnet in Mainnet Bridge Phase 1 (2026-08-11). KNOWN-PARTIAL = core flow documented, but one or more concrete values still not published. Adapters in code stay labeled DEMO until Phase 2 implements them against these values — never treat adapter output as production data.
 
-## Binance x402 (payments)
-- Needs: payment schema, receipt verification. Status: UNKNOWN — X402Adapter interface (createPaymentRequest, verifyReceipt). Demo: PaymentSheet mock flow with receipt + tx hash placeholders. Uses user-main contract money flow (x402 payTo) when live.
+## ERC-8004 (agent identity) — Status: KNOWN
+- Identity Registry BNB mainnet (56): `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` (LIVE RPC-verified 2026-08-11: name()="AgentIdentity", EIP-1967 proxy). Testnet (97): `0x8004A818BFB912233c491871b3d84c89A494BD9e`.
+- Reputation Registry mainnet (56): `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`. Testnet (97): `0x8004B663056A597Dffe9eCcC1965A193B7388713`.
+- Validation Registry: NOT PUBLISHED — EIP-8004 section under active revision (TEE community); 8004scan `/stats` shows total_validators=0. Keep ValidationRegistry reads OUT of the real adapter until it ships.
+- ABI: `abis/IdentityRegistry.json` in github.com/bnb-chain/bnbagent-sdk (Python `bnbagent` on PyPI — v0.4.2; TS `@bnbagent/sdk` on npm — v0.5.0). Reference impl: github.com/erc-8004/erc-8004-contracts (MIT).
+- SDK mint flow (the OFFICIAL command — no CLI exists): `ERC8004Agent(network="bsc-mainnet", wallet_provider=wallet)` → `agent_uri = sdk.generate_agent_uri(name, description, endpoints=[AgentEndpoint.a2a(url), AgentEndpoint.mcp(url, version)])` → `result = sdk.register_agent(agent_uri=agent_uri)` → `{agentId, transactionHash, receipt, agentURI}`. On-chain call: `register(string agentURI, MetadataEntry[] metadata) returns (uint256 agentId)` (ERC-721 mint). Also `set_agent_uri`, `get/set_metadata`, `get_agent_info(agent_id)` (tokenURI/ownerOf/getAgentWallet/getMetadata via RPC).
+- agentId format: `{chainId}:{registry}:{tokenId}`, e.g. `56:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432:263298` (matches live 8004scan data).
+- Metadata schema: agentURI → registration file, `type: https://eips.ethereum.org/EIPS/eip-8004#registration-v1`; fields name/description/image/services[] (A2A, MCP, OASF, ENS, DID, email)/x402Support/active/registrations/supportedTrust[]. Reserved on-chain metadata key `agentWallet` (EIP-712/1271 proof via setAgentWallet).
+- Query track record: 8004scan REST `https://8004scan.io/api/v1/public` → `GET /agents/{chainId}/{tokenId}` (fields include total_score, average_score, total_feedbacks, health_score, is_verified, star_count, x402_supported); UI `https://8004scan.io/agents/bsc/{tokenId}`. SDK helper `get_all_agents` hits `https://www.8004scan.io/api/v1/agents?chain_id=&limit=&offset=` (www → 308-redirects to canonical 8004scan.io; use the non-www base in new code).
+- Gas: MegaFuel paymaster sponsorship (testnet gas-free; mainnet presets also point at bsc-megafuel.nodereal.io, SDK falls back to self-pay).
+- BSC adaptation: BEP-620 (draft mirror of ERC-8004 — Identity/Reputation/Validation on BSC; no addresses in it).
+- Adapter contract kept: `IErc8004Adapter` (getAgentById/ByAddress, listAgents, getAttestations). Phase 2: swap DemoErc8004Adapter for a registry-backed client (RPC reads via IdentityRegistry ABI + 8004scan indexer for listing). agentId8004 format must change from `8004:0x…` to `{chainId}:{registry}:{tokenId}` in the real adapter (types.ts field stays, value semantics documented here).
 
-## Altana (session security)
-- Needs: session contract interface, testnet/mainnet config. Status: UNKNOWN — IAltanaAdapter (createSession, revokeSession, getSession) with mock implementing spend caps/expiry/revocation client-side.
+## Binance x402 (agentic payments, "B402") — Status: KNOWN (addresses of facilitator dynamic)
+- Binance product = B402: implementation of the open x402 protocol on BNB Smart Chain. Live BSC Testnet (97); BSC Mainnet (56) access on request (API credentials via onboarding form).
+- 402 response (seller → buyer): status `402 Payment Required`; Binance docs name header `X-PAYMENT-REQUIREMENTS` (raw JSON body `{x402Version: 2, accepts: [...]}`). Open x402 v2 standard: header `PAYMENT-REQUIRED` with **base64-encoded** `PaymentRequired`. Altana's server reads `X-PAYMENT` → falls back to `PAYMENT-SIGNATURE`. Implement the open v2 shapes; headers must be accepted from at least {X-PAYMENT, PAYMENT-SIGNATURE, X-PAYMENT-REQUIREMENTS}.
+- PaymentRequirements (per accept entry): `{scheme: "exact"|"upto", network: "eip155:56", amount: atomic units (string), asset: token address, payTo: recipient, maxTimeoutSeconds (≤480, default 300), extra: {name, version, assetTransferMethod: "eip3009"|"permit2-exact"|"permit2-upto", signerAddress, spenderAddress (permit2 only)}}`. extra.signerAddress/spenderAddress MUST be forwarded verbatim from `/supported` into the 402 response — buyers cannot call /supported.
+- PaymentPayload (buyer retry): `{x402Version: 2, resource?: {url, description?, mimeType?}, accepted: PaymentRequirements, payload: {signature: "0x"+65B EIP-712, authorization? (eip3009: {from,to,value,validAfter,validBefore,nonce}) | permit2Authorization? ({permitted:{token,amount}, from, spender, nonce, deadline, witness:{to, validAfter, facilitator?}})}}`.
+- Signature: EIP-712 typed data by the payer wallet (Agentic Wallet skill supported; any EOA holding the token works). eip3009 primary type `TransferWithAuthorization`, domain = token contract (name/version from /supported: U/"1", USD1/"1", USD Coin/"2", Tether USD/"1"). Permit2: domain `{name:"Permit2", chainId, verifyingContract: 0x000000000022D473030F116dDEE9F6B43aC78BA3}` (canonical Uniswap Permit2, constant across chains), primaryType `PermitWitnessTransferFrom`, witness struct `Witness` (field order load-bearing), deadline = now+3600, spender = B402 Permit2 proxy (from /supported), one-time approve(permit2, max) prerequisite.
+- Verify/settle: `POST /papi/v2/b402/verify` → `{isValid, payer, invalidReason?}`; `POST /papi/v2/b402/settle` → async `{success, transaction, payer, network, amount?, errorReason?}` — `success:false` + tx hash = Pending, poll (idempotent, keyed (nonce,network,payer)); empty tx = terminal failure. Auth: X-Tesla-ClientId/X-Tesla-SignAccessToken/X-Tesla-Timestamp/X-Tesla-Signature (RSA-SHA256 PKCS#1 over body+timestamp). Rate limits: /verify 100 rps, /settle 20 rps, 429 over.
+- Settlement: NO escrow/custody — direct peer-to-peer token transfer buyer→seller on BNB Chain, gas sponsored by B402. eip3009 → `token.transferWithAuthorization(...)` on the token; permit2 → `Permit2.permitWitnessTransferFrom(...)` via the B402 proxy, which enforces witness.to==payTo (and upto: witness.facilitator==signerAddress).
+- Mainnet tokens (56): U `0xcE24439F2D9C6a2289F741120FE202248B666666` (18 dec, eip3009+permit2), USD1 `0x8d0D000Ee44948FC98c9B98A4FA4921476f08B0d` (18, eip3009+permit2), USDT `0x55d398326f99059fF775485246999027B3197955` (18, permit2), USDC `0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d` (18, permit2). Testnet: Mock U `0x330949Aed7d00FCe0558C64ED6FeC9792616cC39` (6 dec), USDC `0xEC1C60D64a06896Df296438c12edD14E974FDE47`, USDT `0x337610d27c682E347C9cD60BD4b3b107C9d34dDd`.
+- NOT PUBLISHED: B402 facilitator EOA (signerAddress) + Permit2 proxy (spenderAddress) — returned ONLY by authenticated /supported; docs say do not hardcode (proxy redeployable). Mainnet API credentials — apply via onboarding.
+- Open standard: x402 (Linux Foundation; LF Projects) — docs.x402.org, spec v2 github.com/x402-foundation/x402; CDP wire-shape compatible ("client libraries built for CDP work against B402 with one URL change"). Altana `@altananetwork/x402-server` = seller side B402; BNB Agent Studio CLI = `bag x402 trust` → `bag x402 buy`.
+- Adapter contract kept: `X402Adapter` (createPaymentRequest, verifyReceipt). Real implementation: createPaymentRequest returns PaymentRequirements-shaped 402 challenge (amounts in atomic units, asset=token address, payTo matching our contract x402 payTo); verifyReceipt = flow through facilitator /verify (+ /settle async poll) or accept signed PaymentPayload and relay. Continue to use user-main contract money flow (x402 payTo) when live.
 
-## PancakeSwap (AlphaDesk)
-- Needs: router + position manager addresses/ABIs (mainnet vs testnet). Status: UNKNOWN — IPancakeAdapter with mock quotes/sim/rebalance. AlphaDesk agents restrict targets to allowlisted PancakeSwap contracts, slippage caps, simulation-before-execute.
+## Altana (agentic wallet & session keys) — Status: KNOWN
+- Official docs docs.altana.network. SDK `@altananetwork/sdk` (TypeScript only; peer range >=0.3.3 <0.6.0; EIP-7702 agentic wallets, non-custodial). BNB Chain = default network. Relay broadcasts tx and recovers gas (NOT sponsorship; no MegaFuel on Altana path). KeyStore audited by CertiK (completed 2026-07-15; source-verified on BscScan).
+- BNB mainnet (56): KeyStore `0x6572427ED530BadcF7375Cf9A4709D8d2b0E7E0a`, KeyStoreController `0x0834Ee2C9BdC3E3efF0a2dC34393D4B0e546A555`, Relay `https://relay.altana.network`, RPC `https://bsc-rpc.publicnode.com`.
+- Testnet (97): KeyStore `0x6b8361C29d05D498b1a12B54A37310f94171E94A`, KeyStoreController `0xb530D1971f5453F3359518343F05D0AedFfF7e12`, Relay `https://testnet-relay.altana.network` (account stack Orchestrator/Delegation proxy/Account impl/Simulator/Funder/Escrow published for testnet; mainnet uses EIP-7702 delegation — no separate factory addresses published).
+- Session key with on-chain spend limits (the exact shape):
+  `client.grantSession({wallet, signer, permissions: {calls?: [{to?, signature?}], spend?: [{limit, period: "day"|"hour"|..., token?}]}, expiry: unixSeconds, sessionSigner?, register?: boolean (default true), feeToken?, chainId?})` → `Session {walletAddress, signer, publicKey, permissions, expiry}`.
+  Spend `limit` = token smallest unit (USDT on BNB = 18 decimals → 100 USDT/day = 100n*10n**18n). `calls` omitted = unrestricted (set it!). bnbagent-sdk TS helper: `defaultAgentPermissions({chainId: 56, tokenSpend: {limit}})`.
+  Atomically: session pubkey registered in open on-chain KeyStore + authorized on the wallet with its permissions hash.
+- Revocation: `client.revokeSession({wallet, signer: admin, session})` — ONE tx, immediate; isValidKey false from next block; monotonic (cannot re-activate). Altana/EIP-7702 session keys can also be revoked via bnbagent TS `AltanaWalletProvider` (admin.revokeSession; admin.grantSession/registerSessionKey for ephemeral).
+- Verification (free, any RPC): keyId = keccak256(SEC1 publicKey); `isValidKey(wallet, keyId)` view; `getKeys(wallet)`. Enforced on-chain at execution (overspend/unauthorized/expired revert).
+- x402 via session key: `fetchWithX402` (permit2 rail incl. B402; EIP-3009 rail); admin sets `approveSignatureChecker(session, checker)` + `approveTokenForPermit2`; in-process caps maxPayment/sessionBudget/expectedAsset; session spend limits do NOT cover Permit2 pulls (setPermit2Allowance is the on-chain ceiling).
+- Adapter contract kept: `IAltanaAdapter` (createSession, revokeSession, getSession). Real implementation: createSession → grantSession (map spendCap/token/expiryDays/allowedTargets → spend/calls/expiry; store Session JSON verbatim — bytes-exact at execute); revokeSession → revokeSession; getSession → isValidKey + KeyStore read. explorerUrl → bscscan KeyStore link. Keep BNBAgent AltanaWalletProvider (sessionFromEnv, ALTANA_SESSION_FILE) as the agent-side signer option.
 
-## AltLayer (observability)
-- Needs: 8004scan Pro integration method, AltLLM API access. Status: UNKNOWN — placeholder ObservabilityPanel (agent logs, health, LLM usage) marked preview/placeholder.
+## PancakeSwap (AlphaDesk V3 DeFi utility) — Status: KNOWN
+- Official V3 BSC mainnet (56) addresses (verbatim from github.com/pancakeswap/pancake-v3-contracts deployments/bscMainnet.json; also developer.pancakeswap.finance/contracts/v3/addresses):
+  - SwapRouter `0x1b81D678ffb9C0263b24A97847620C99d213eB14`
+  - NonfungiblePositionManager `0x46A15B0b27311cedF172AB29E4f4766fbE7F4364`
+  - QuoterV2 `0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997`
+  - PancakeV3Factory `0x0BFbCF9fa4f9C56B0F40a671Ad40E0805A091865`
+  - PancakeV3PoolDeployer `0x41ff9AA7e16B8B1a8a8dc4f0eFacd93D02d071c9`
+  - V3Migrator `0xbC203d7f83677c7ed3F7acEc959963E7F4ECC5C2` · TickLens `0x9a489505a00cE272eAa5e07Dba6491314CaE3796` · MasterChefV3 `0x556B9306565093C855AEA9AE92A594704c2Cd59e` · NonfungibleTokenPositionDescriptor `0x3D00CdB4785F0ef20C903A13596e0b9B2c652227` · PancakeInterfaceMulticall `0xac1cE734566f390A94b00eb9bf561c2625BF44ea` · PancakeV3LmPoolDeployer `0x769449da49D1Eb1FF44A6B366BE46960fDF46Ad6`
+- Tokens (56): WBNB `0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c`, USDT `0x55d398326f99059fF775485246999027B3197955`, BUSD `0xe9e7CEA3DedcA5984780Bafc599bD69ADd087D56`, USDC `0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d`, CAKE via SDK token list.
+- ABIs: `@pancakeswap/v3-sdk` npm package (contract artifacts + token list); V3 MasterChef etc. in pancake-v3-contracts repo. Trading-agent guide: docs.pancakeswap.finance/trading-tools/building-trading-agents-on-pancakeswap-v3.
+- Adapter contract kept: `IPancakeAdapter` (getQuote, simulateRebalance, …). Real implementation: route quotes through QuoterV2/quoters (SmartRouter), execute through SwapRouter with slippage caps; position ops via NonfungiblePositionManager; AlphaDesk allowlist = the addresses above; simulation-before-execute stays.
 
-## Rules
-- Never fake an integration. Adapter + explicit UNKNOWN marker in code and UNKNOWN_ITEMS.md.
+## AltLayer (observability / 8004scan) — Status: KNOWN (AltLLM API still UNKNOWN)
+- Public REST API EXISTS. Base `https://8004scan.io/api/v1/public` (OpenAPI: `/docs/openapi.json`; interactive: `https://8004scan.io/developers/docs`). Optional `X-API-Key` header. No `api.8004scan.altlayer.io` — host is 8004scan.io.
+- Endpoints: `GET /agents` (list/filter, pagination), `GET /agents/{chainId}/{tokenId}` (agent detail incl. metrics: total_score, average_score, total_feedbacks, health_score, is_verified, star_count, x402_supported, supported_protocols), `GET /agents/search?q=` (hybrid semantic), `GET /accounts/{address}/agents`, `GET /stats`, `GET /feedbacks`, `GET /chains`. Response envelope `{success, data, meta{version, timestamp, requestId}}`; rate-limit headers X-RateLimit-Limit/-Remaining/-Reset.
+- Rate tiers: anonymous 10 req/min (100/day) … "Pro" 500 req/min (100k/day) — Pro is a rate tier on the Builder Hub, not a separate product.
+- 8004scan tracks ERC-8004 agents across 26+ chains (~713k agents total; ~252k on BSC; verified live 2026-08-11). Agent UI: `https://8004scan.io/agents/bsc/{tokenId}` (Overview/Services/Statistics/Quality/Feedback/Metadata tabs).
+- AltLayer docs (docs.altlayer.io) describe 8004scan as a UI explorer; AltLLM API access NOT found in Phase 1 research — still UNKNOWN.
+- Adapter contract kept: ObservabilityPanel reads stay behind an adapter; real data source = 8004scan REST (no auth for anonymous tier; X-API-Key for higher tiers).
+
+## Rules (unchanged)
+- Never fake an integration. Adapter + explicit DEMO marker in code and UNKNOWN_ITEMS.md until the next phase swaps in real clients.
 - Mock implementations are deterministic and labeled DEMO so proofs are honest.
+- When implementing: addresses above are Phase-1 snapshots; re-verify against primary sources before spending real funds. B402 signer/spender addresses MUST come from /supported at runtime (never hardcode).
