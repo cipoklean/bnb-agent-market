@@ -138,6 +138,12 @@ export async function listAgents({
   chainId = 56,
   limit = 24,
 }: { chainId?: number; limit?: number } = {}): Promise<DirectoryResult> {
+  // Dev/test affordance: SCAN_FORCE_FAIL=1 simulates an indexer outage so the
+  // resilience fallbacks (lastGood / snapshot / degraded) can be walked.
+  // Never set in production.
+  if (process.env.SCAN_FORCE_FAIL === "1") {
+    return { agents: [], total: 0, degraded: true, fetchedAt: new Date().toISOString() };
+  }
   const clamped = Math.min(Math.max(1, Math.floor(limit)), 100); // API caps at 100
   const key = `${chainId}:${clamped}`;
   const now = Date.now();

@@ -81,6 +81,49 @@ settings "List your agent" panel, site footer.
   (19/19, online) new; verify-mainnet-bridge-evidence 29/29; checksum
   MEMORY VERIFIED.
 
+## Phase 6 — Directory resilience (2026-08-11)
+
+The live directory never renders "0 + scary banner" when a recent good result
+exists. Layered fallback in `lib/directory-cache.ts` (server-only):
+
+1. **live** — listAgents result, 5-minute TTL, module-level `lastGood` refreshed;
+   UI shows a subtle green "live" dot, no caption.
+2. **lastGood (stale)** — a live attempt failed but a recent success exists;
+   served with `stale: true`, amber caption "Showing cached directory — fetched
+   {timeAgo}. Live scores return when 8004scan responds."
+3. **snapshot (stale)** — bundled build-time snapshot
+   (`apps/web/src/lib/directory-snapshot.json`, top-24 + total, regenerated via
+   `node scripts/snapshot-directory.mjs`, atomic write, keeps the old file on
+   network failure — the build never depends on network). Same amber caption.
+4. **degraded** — nothing available: `{ agents: [], degraded: true }`, the
+   existing banner + empty state + submit CTA.
+
+Home, marketplace, alphadesk, taskchain all call `getDirectory()` (single shared
+cache — no direct listAgents left). Dev/test env flags (never on in prod):
+`SCAN_FORCE_FAIL=1`, `DIRECTORY_TTL_MS`, `DIRECTORY_DISABLE_SNAPSHOT=1`.
+
+Proof (tests/verify-directory-resilience.mjs, 21/21):
+- A. forced failure + fresh instance → source "snapshot", stale, real agents
+  + total (253,340), fetchedAt present.
+- B. forced failure + snapshot disabled → source "degraded", empty agents.
+- C. real live success then forced failure → second call still serves real
+  data, stale, source lastGood/snapshot — the core invariant (never
+  0+banner after a good result) holds.
+- D. wiring: all four pages use getDirectory; stale caption + live dot;
+  SCAN_FORCE_FAIL wired.
+
+Browser walk (SCAN_FORCE_FAIL=1): /marketplace rendered the FULL snapshot
+directory (24 agents, "24 listed · 253,340 agents indexed on BSC") with the
+amber "Showing cached directory — fetched Xm ago" caption; home showed the
+stats + same caption; zero JS errors. (The forced-fail instance also stayed
+up on port 3000 after its wrapper was killed — orphaned next-child,
+killed via taskkill on the listener PID.)
+
+Checks: typecheck clean; build 14/14 with the snapshot JSON bundled
+(resolveJsonModule); offline gate + delegation + deploy-hardening PASS;
+verify-live-directory 19/19 (assertion updated to getDirectory);
+verify-mainnet-bridge-evidence 29/29; checksum MEMORY VERIFIED.
+
 ## Honest notes
 
 - The 60s cache is per server-instance memory; on Vercel's isolated

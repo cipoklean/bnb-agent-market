@@ -87,7 +87,7 @@ console.log("=== C. static contracts ===");
 {
   const mp = readFileSync(path.join(WEB, "src/app/marketplace/page.tsx"), "utf8");
   check("marketplace is a server component (force-dynamic)", mp.includes('export const dynamic = "force-dynamic"'), "not dynamic");
-  check("marketplace fetches listAgents", mp.includes("listAgents({ chainId: 56, limit: 24 })"), "no listAgents call");
+  check("marketplace fetches via directory-cache", mp.includes("getDirectory({ chainId: 56, limit: 24 })"), "no getDirectory call");
   const data = readFileSync(path.join(WEB, "src/lib/data.ts"), "utf8");
   check("data.ts: no production AGENTS export", !/export const AGENTS/.test(data), "AGENTS still exported");
   check("data.ts: sample behind flag", data.includes("sampleAgentsEnabled") && data.includes('NEXT_PUBLIC_SAMPLE_DATA === "1"'), "sample flag missing");

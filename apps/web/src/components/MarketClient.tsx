@@ -1,15 +1,17 @@
 "use client";
-// MarketClient — the live directory UI. Server pages fetch listAgents() and
-// pass the raw views; this client merges locally submitted agents from the
-// store, then filters / searches / sorts. Degraded mode shows a candid banner
-// and keeps local submissions browsable.
+// MarketClient — the live directory UI. Server pages fetch getDirectory()
+// (lib/directory-cache) and pass the views + source state; this client merges
+// locally submitted agents from the store, then filters / searches / sorts.
+// Honest captions per source: live dot / stale amber note / degraded banner.
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AlertTriangle, Plus, Search } from "lucide-react";
+import { AlertTriangle, Clock, Plus, Search } from "lucide-react";
 import ScanAgentCard from "@/components/ScanAgentCard";
 import { EmptyState } from "@/components/ui";
 import { useMarket } from "@/lib/store";
+import { timeAgo } from "@/lib/format";
 import { viewFromSubmission } from "@/lib/scan-normalize";
+import type { DirectorySource } from "@/lib/directory-cache";
 import type { LiveAgentView } from "@/lib/scan-normalize";
 
 type Filter = "all" | "x402" | "verified";
@@ -17,13 +19,19 @@ type SortKey = "score" | "feedbacks" | "fresh";
 
 export default function MarketClient({
   live,
-  degraded,
   total,
+  degraded,
+  stale,
+  source,
+  fetchedAt,
   note,
 }: {
   live: LiveAgentView[];
-  degraded: boolean;
   total: number;
+  degraded: boolean;
+  stale: boolean;
+  source: DirectorySource;
+  fetchedAt?: string;
   note?: string;
 }) {
   const { submittedAgents } = useMarket();
@@ -74,8 +82,22 @@ export default function MarketClient({
             </span>
           </div>
         )}
+        {!degraded && stale && (
+          <div className="flex items-start gap-2.5 rounded-btn border border-amber/30 bg-amber/8 p-3 text-[13px] text-warning">
+            <Clock size={15} className="mt-0.5 shrink-0" />
+            <span>
+              Showing cached directory — fetched {fetchedAt ? timeAgo(fetchedAt) : "recently"}.
+              Live scores return when 8004scan responds.
+            </span>
+          </div>
+        )}
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="body-sm">
+            {!degraded && !stale && source === "live" && (
+              <span className="mr-2 inline-flex items-center gap-1.5 text-[12px] text-muted">
+                <span className="dot dot-green" /> live
+              </span>
+            )}
             <span className="tnum font-semibold text-text">{views.length}</span>{" "}
             listed in this directory ·{" "}
             <span className="tnum font-semibold text-text">

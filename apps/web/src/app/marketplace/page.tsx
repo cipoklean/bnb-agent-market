@@ -1,14 +1,14 @@
-// Marketplace — LIVE directory: fetched server-side from the 8004scan indexer
-// (60s server-side cache in lib/scan-server.ts), merged client-side with
-// locally submitted agents. No mock data in the production path; a graceful
-// degraded banner appears when the indexer is unreachable.
+// Marketplace — LIVE directory: layered resilience via lib/directory-cache
+// (live 5-min TTL → in-memory lastGood → bundled build-time snapshot →
+// degraded). No mock data in the production path; honest captions for every
+// source.
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import MarketClient from "@/components/MarketClient";
 import SampleMarketplace from "@/components/SampleMarketplace";
 import { sampleAgentsEnabled } from "@/lib/data";
+import { getDirectory } from "@/lib/directory-cache";
 import { normalizeScanEntry } from "@/lib/scan-normalize";
-import { listAgents } from "@/lib/scan-server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export default async function MarketplacePage() {
   // Dev-only sample registry (NEXT_PUBLIC_SAMPLE_DATA=1) — never production.
   if (sampleAgentsEnabled()) return <SampleMarketplace />;
 
-  const dir = await listAgents({ chainId: 56, limit: 24 });
+  const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
 
   return (
@@ -32,7 +32,15 @@ export default async function MarketplacePage() {
         </p>
       </div>
 
-      <MarketClient live={live} degraded={dir.degraded} total={dir.total} />
+      <MarketClient
+        live={live}
+        total={dir.total}
+        degraded={dir.degraded}
+        stale={dir.stale}
+        source={dir.source}
+        fetchedAt={dir.fetchedAt}
+      />
     </div>
   );
 }
+

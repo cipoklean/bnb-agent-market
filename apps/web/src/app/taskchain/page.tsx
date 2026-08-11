@@ -15,8 +15,8 @@ import MarketClient from "@/components/MarketClient";
 import SampleAgentGrid from "@/components/SampleAgentGrid";
 import { PanelGlass, SectionTitle } from "@/components/ui";
 import { sampleAgentsEnabled } from "@/lib/data";
+import { getDirectory } from "@/lib/directory-cache";
 import { normalizeScanEntry } from "@/lib/scan-normalize";
-import { listAgents } from "@/lib/scan-server";
 
 export const dynamic = "force-dynamic";
 
@@ -64,7 +64,7 @@ export default async function TaskChainPage() {
     );
   }
 
-  const dir = await listAgents({ chainId: 56, limit: 24 });
+  const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
 
   return (
@@ -115,7 +115,15 @@ export default async function TaskChainPage() {
           title="TaskChain directory"
           sub="Live from 8004scan — the indexer does not record vertical categories, so agent categories are unverified here."
         />
-        <MarketClient live={live} degraded={dir.degraded} total={dir.total} note="category unverified" />
+        <MarketClient
+          live={live}
+          total={dir.total}
+          degraded={dir.degraded}
+          stale={dir.stale}
+          source={dir.source}
+          fetchedAt={dir.fetchedAt}
+          note="category unverified"
+        />
       </section>
 
       {/* Note */}

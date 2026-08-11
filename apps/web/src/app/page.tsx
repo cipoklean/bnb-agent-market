@@ -1,6 +1,8 @@
 // Home — hero with REAL indexer stats + live directory featured agents.
 // Product copy (how it works, trust & safety) is unchanged; the numbers are
 // no longer invented. Featured = top 3 by total_feedbacks from the live list.
+// Directory data flows through lib/directory-cache (live → lastGood →
+// snapshot → degraded) with honest captions per source.
 import Link from "next/link";
 import {
   ArrowRight,
@@ -18,8 +20,9 @@ import ScanAgentCard from "@/components/ScanAgentCard";
 import SampleHome from "@/components/SampleHome";
 import { PanelGlass, SectionTitle } from "@/components/ui";
 import { sampleAgentsEnabled } from "@/lib/data";
+import { getDirectory } from "@/lib/directory-cache";
+import { timeAgo } from "@/lib/format";
 import { normalizeScanEntry } from "@/lib/scan-normalize";
-import { listAgents } from "@/lib/scan-server";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +58,7 @@ export default async function HomePage() {
   // Dev-only sample registry (NEXT_PUBLIC_SAMPLE_DATA=1) — never production.
   if (sampleAgentsEnabled()) return <SampleHome />;
 
-  const dir = await listAgents({ chainId: 56, limit: 24 });
+  const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
   const featured = [...live]
     .sort((a, b) => b.totalFeedbacks - a.totalFeedbacks)
@@ -101,6 +104,13 @@ export default async function HomePage() {
             </>
           )}
         </div>
+        {!dir.degraded && dir.stale && (
+          <p className="mt-3 flex items-center gap-1.5 text-[12px] text-warning">
+            <Clock size={13} />
+            Showing cached directory — fetched {dir.fetchedAt ? timeAgo(dir.fetchedAt) : "recently"}.
+            Live scores return when 8004scan responds.
+          </p>
+        )}
       </section>
 
       {/* How it works */}
