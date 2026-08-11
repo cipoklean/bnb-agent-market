@@ -2,14 +2,19 @@
 // Agent Profile — identity, ERC-8004, performance chart, capabilities, attestations
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Activity,
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   Check,
+  ExternalLink,
   FileText,
+  MessageSquare,
   Shield,
+  Star,
   Zap,
 } from "lucide-react";
 import {
@@ -24,9 +29,10 @@ import {
 import TrustPanel from "@/components/TrustPanel";
 import RiskBadge from "@/components/RiskBadge";
 import { getAgent } from "@/lib/data";
+import { erc8004Adapter, MAINNET_AGENT_LINK } from "@/lib/adapters/erc8004";
 import { useMarket } from "@/lib/store";
 import { formatAmount, formatPercent, timeAgo } from "@/lib/format";
-import type { FeeModel } from "@/lib/types";
+import type { Erc8004ScanMetrics, FeeModel } from "@/lib/types";
 import {
   ResponsiveContainer,
   LineChart,
@@ -49,6 +55,22 @@ export default function AgentProfilePage() {
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { sessions } = useMarket();
   const agent = useMemo(() => getAgent(id ?? ""), [id]);
+
+  const [scanMetrics, setScanMetrics] = useState<Erc8004ScanMetrics | null>(null);
+
+  // Live mainnet metrics — real 8004scan API fetch, only for our registered
+  // agent. The adapter never throws: on failure it logs a console warning and
+  // returns null, so the page gracefully keeps the deterministic demo data.
+  useEffect(() => {
+    if (!id || id !== MAINNET_AGENT_LINK.agentId) return;
+    let cancelled = false;
+    erc8004Adapter.getLiveScanMetrics(id).then((m) => {
+      if (!cancelled) setScanMetrics(m);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const liveSession = useMemo(
     () =>
@@ -285,6 +307,74 @@ export default function AgentProfilePage() {
 
         {/* Right column */}
         <div className="flex flex-col gap-4">
+          {scanMetrics && (
+            <Panel className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="title-card">Live Mainnet Metrics</h3>
+                <span className="badge-green">
+                  <Check size={12} /> Live Data via 8004scan API
+                </span>
+              </div>
+              <p className="body-sm">
+                Real indexer data for the on-chain agent{" "}
+                <span className="hash">{scanMetrics.agentId}</span> — not a demo.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <StatCard
+                  label="Health score"
+                  value={scanMetrics.healthScore === null ? "n/a" : String(scanMetrics.healthScore)}
+                  hint="8004scan health metric"
+                  icon={<Activity size={14} />}
+                />
+                <StatCard
+                  label="Total feedbacks"
+                  value={scanMetrics.totalFeedbacks.toLocaleString()}
+                  hint="On-chain feedback count"
+                  icon={<MessageSquare size={14} />}
+                />
+                <StatCard
+                  label="Total score"
+                  value={scanMetrics.totalScore === null ? "n/a" : String(scanMetrics.totalScore)}
+                  hint="8004scan composite"
+                  tone="gold"
+                  icon={<Star size={14} />}
+                />
+                <StatCard
+                  label="Average score"
+                  value={scanMetrics.averageScore === null ? "n/a" : String(scanMetrics.averageScore)}
+                  hint="From on-chain feedback"
+                  icon={<BarChart3 size={14} />}
+                />
+              </div>
+              {scanMetrics.x402Supported ? (
+                <span className="flex items-center gap-1.5 text-[13px] text-success">
+                  <Check size={14} /> x402 payments supported
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-[13px] text-muted">
+                  x402 not supported (per indexer)
+                </span>
+              )}
+              <div className="flex items-center justify-between gap-2">
+                <a
+                  href={MAINNET_AGENT_LINK.scanUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-ghost btn-sm"
+                >
+                  <ExternalLink size={13} /> View on 8004scan
+                </a>
+                <span className="caption">
+                  {scanMetrics.totalScore === 0 && scanMetrics.totalFeedbacks === 0
+                    ? "Fresh agent — scores populate as usage accrues."
+                    : `Updated ${timeAgo(scanMetrics.updatedAt)}`}
+                </span>
+              </div>
+              <p className="caption">
+                Source: {scanMetrics.sourceUrl} · fetched {timeAgo(scanMetrics.fetchedAt)}
+              </p>
+            </Panel>
+          )}
           {liveSession ? (
             <TrustPanel session={liveSession} />
           ) : (

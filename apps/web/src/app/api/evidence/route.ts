@@ -72,11 +72,11 @@ export async function GET(req: Request) {
       note: "Live confirmations and payments live in the BROWSER store (zustand persist) and cannot be read by this server endpoint. Serialize them from the Evidence Center page export — packets downloaded there include the real browser-store records at export time.",
     },
     integrationStatus: {
-      erc8004: "DEMO — official registry address/ABI UNKNOWN",
+      erc8004: "KNOWN — IdentityRegistry verified (mainnet/testnet); live metrics via 8004scan API for mainnet agent 263312 on /agents/portfolio-reporter",
       x402: "DEMO — official payment schema UNKNOWN",
       altana: "DEMO — SDK/contract interface UNKNOWN",
       pancake: "DEMO — contract addresses/ABI UNKNOWN",
-      altlayer: "PLACEHOLDER — 8004scan Pro / AltLLM UNKNOWN",
+      altlayer: "KNOWN — public 8004scan REST API integrated; live mainnet metrics panel (agents/portfolio-reporter)",
     },
     proofRule: "Every important action produces a proof: tx hash, memory hash, receipt, attestation, or log. Nothing is faked; adapters are labeled.",
   };

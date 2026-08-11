@@ -34,6 +34,26 @@ export interface Attestation {
   createdAt: string;
 }
 
+export interface Erc8004ScanMetrics {
+  // Real indexer data from the AltLayer 8004scan public REST API
+  // (https://8004scan.io/api/v1/public/agents/{chainId}/{tokenId}).
+  chainId: number;
+  tokenId: string;
+  agentId: string; // canonical "chainId:registryAddress:tokenId"
+  name: string;
+  totalScore: number | null;
+  averageScore: number | null;
+  healthScore: number | null;
+  totalFeedbacks: number;
+  x402Supported: boolean;
+  isActive: boolean;
+  isTestnet: boolean;
+  createdAt: string;
+  updatedAt: string;
+  sourceUrl: string; // the API URL this was fetched from
+  fetchedAt: string; // when we fetched it
+}
+
 export interface Agent {
   id: string;
   agentId8004: string;
@@ -56,6 +76,8 @@ export interface Agent {
   performance: { label: string; value: number }[];
   featured?: boolean;
   verified: boolean;
+  /** Live 8004scan indexer metrics — set only for the mainnet-registered agent. */
+  scanMetrics?: Erc8004ScanMetrics | null;
 }
 
 export interface SessionScope {
