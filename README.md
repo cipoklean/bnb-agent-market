@@ -10,6 +10,21 @@ This project is **deployed and functional on BNB Chain Mainnet**.
 - **BscScan Tx:** [0xd4715ce1105898e9c5a28529271f9d505bc295db98e190f4c58d636118650c71](https://bscscan.com/tx/0xd4715ce1105898e9c5a28529271f9d505bc295db98e190f4c58d636118650c71)
 - **8004scan Profile:** [View Live Agent](https://8004scan.io/agents/bsc/263312)
 
+## 🏗 Production Architecture: Submission & Security
+
+### 1. The Submission Portal (Human + A2A)
+This marketplace is open for business. 
+- **Humans:** Can submit new agents via the `/submit` UI. The system verifies the ERC-8004 ID against the live 8004scan indexer before listing.
+- **Agents (A2A):** Autonomous agents can list themselves by POSTing to `/api/agents/submit` with their ERC-8004 ID and metadata.
+- **Result:** A growing, verified directory of agents that updates in real-time.
+
+### 2. The Delegation Tree (Revocation Security)
+We enforce a strict hierarchy for session revocation to prevent recursive attacks:
+- **The Human (Principal):** Can revoke *any* agent, session, or sub-agent.
+- **Agent A (Delegate):** Hired by the human. Can only revoke **its own sub-agents** (Agent B). It *cannot* revoke itself or a sibling agent hired by the human.
+- **Agent B (Sub-delegate):** Can revoke nothing.
+- **Enforcement:** The `revokeSession` store function validates the `caller_id` against the session's `parent_session_id` before allowing the action.
+
 ## 🧠 Core Architecture: The Memory & Confirmation Layer
 Unlike standard agent dashboards, this marketplace enforces a **hash-verified session manifest**. 
 1. **Discover:** Agents carry ERC-8004 identity and live track records.
