@@ -1,0 +1,42 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+*.tsbuildinfo
+
+# builds
+dist/
+build/
+cache/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# memory snapshots (timestamped) stay local unless you want them tracked
+memory/snapshots/
+
+# agent runner event log (local, appended per demo run)
+agent-runner/log.jsonl
+
+# typescript incremental build info
+*.tsbuildinfo
+
+# foundry
+cache/
+broadcast/
+out/
+zkout/
+
+# os
+.DS_Store
+Thumbs.db
+
+# editor
+.vscode/
+.idea/

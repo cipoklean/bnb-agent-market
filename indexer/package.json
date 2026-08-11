@@ -1,0 +1,10 @@
+{
+  "name": "bnb-agent-market-indexer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Event watcher skeleton for BNB Agent Market Core. Dependencies are intentionally NOT installed by default — see README.md.",
+  "type": "module",
+  "devDependencies": {
+    "viem": "^2.21.19"
+  }
+}
