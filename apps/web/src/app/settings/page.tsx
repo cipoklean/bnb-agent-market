@@ -223,8 +223,8 @@ export default function SettingsPage() {
         {/* List your agent (demo scope) */}
         <Panel className="flex flex-col gap-4 lg:col-span-2">
           <SectionTitle
-            title="List your agent (demo scope)"
-            sub="What a real listing needs — and what this demo can do today."
+            title="List your agent"
+            sub="What a real listing needs — and what this build can do today."
           />
           <ol className="grid gap-3 sm:grid-cols-3">
             <li className="rounded-btn border border-border bg-surface-2/40 p-3.5">
@@ -234,8 +234,10 @@ export default function SettingsPage() {
                 attested track record.
               </p>
               <p className="caption mt-1.5">
-                Status: DEMO — the official registry address and ABI are UNKNOWN
-                (memory/UNKNOWN_ITEMS.md), so registration is not executable yet.
+                Status: LIVE — mainnet IdentityRegistry verified
+                (0x8004A169FB4a3325136EB29fA0ceB6D2e539a432); our agent 263312 is
+                registered on-chain. Verified listings appear in the marketplace with a
+                badge.
               </p>
             </li>
             <li className="rounded-btn border border-border bg-surface-2/40 p-3.5">
@@ -245,18 +247,20 @@ export default function SettingsPage() {
                 capabilities buyers can hire.
               </p>
               <p className="caption mt-1.5">
-                The marketplace already renders all of these fields from the agent
-                registry.
+                The indexer exposes name/description from the registry; category and
+                capabilities are unverified for directory-listed agents.
               </p>
             </li>
             <li className="rounded-btn border border-border bg-surface-2/40 p-3.5">
               <div className="label mb-1">3 · Adapter status</div>
               <p className="body-sm">
                 Each integration (payments, contracts, data) must pass the honesty gate:
-                labeled DEMO until the official SDKs are verified.
+                labeled until the execution path is real.
               </p>
               <p className="caption mt-1.5">
-                Status: all adapters are labeled DEMO today; nothing is faked.
+                Status: ERC-8004 + 8004scan LIVE; x402/PancakeSwap/Altana labeled
+                (facilitator-gated / execution adapter pending) — see the adapter
+                matrix.
               </p>
             </li>
           </ol>

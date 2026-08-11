@@ -29,7 +29,7 @@ import RevokeButton from "@/components/RevokeButton";
 import TrustPanel from "@/components/TrustPanel";
 import RiskBadge from "@/components/RiskBadge";
 import { useMarket } from "@/lib/store";
-import { getAgent } from "@/lib/data";
+import { resolveSessionAgent } from "@/lib/scan-resolve";
 import { countdown, formatAmount, timeAgo } from "@/lib/format";
 import { classifyManifestHash, type ManifestHashStatus } from "@/lib/memory";
 import type { SessionManifest, SessionStatus } from "@/lib/types";
@@ -47,7 +47,7 @@ const STATUS_LABEL: Record<SessionStatus, { cls: string; label: string }> = {
 export default function SessionDetailPage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { sessions, events, payments, confirmations, reverifySession } = useMarket();
+  const { sessions, events, payments, confirmations, reverifySession, submittedAgents } = useMarket();
   const session = useMemo(
     () => sessions.find((s) => s.session_id === id),
     [sessions, id]
@@ -74,7 +74,7 @@ export default function SessionDetailPage() {
     );
   }
 
-  const agent = getAgent(session.agent_id);
+  const agent = resolveSessionAgent(session.agent_id, submittedAgents);
   const st = STATUS_LABEL[session.status];
   const sessionEvents = events.filter((e) => e.session_id === session.session_id);
   const sessionPayments = payments.filter((p) => p.session_id === session.session_id);

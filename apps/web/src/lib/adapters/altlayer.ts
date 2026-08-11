@@ -1,5 +1,7 @@
 // AltLayer observability adapter — agent logs, health, LLM usage.
-// STATUS: PLACEHOLDER. 8004scan Pro integration method + AltLLM API access UNKNOWN (memory/UNKNOWN_ITEMS.md #10-11).
+// STATUS: LIVE — public 8004scan directory + metrics API integrated (list,
+// per-agent show, agent submissions, Live panels). 8004scan Pro / AltLLM API
+// access still UNKNOWN (memory/UNKNOWN_ITEMS.md #10-11).
 
 export interface AgentHealth {
   agentId: string;
@@ -16,7 +18,8 @@ export interface IAltLayerObservability {
   getLogs(agentId: string, limit?: number): Promise<string[]>;
 }
 
-export const ALTLAYER_STATUS = "PLACEHOLDER (8004scan Pro / AltLLM UNKNOWN)" as const;
+export const ALTLAYER_STATUS =
+  "LIVE — public 8004scan directory API (Pro/AltLLM UNKNOWN)" as const;
 
 export const altLayerObservability: IAltLayerObservability = {
   async getHealth(agentId) {

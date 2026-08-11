@@ -167,9 +167,10 @@ console.log('=== D. memory references real values ===');
   check('TASKS: Phase 2 DONE both legs', /Phase 2: Register test agents on BNB Chain — \*\*DONE both legs/.test(tasks), 'not marked done');
   check('TASKS: mainnet agentId + tx', tasks.includes('263312') && tasks.includes(MAINNET_TX), 'mainnet values missing');
   // SESSION_STATE's Next Best Action tracks the CURRENT bridge phase — it moved
-  // 3→4 when Phase 3's ERC-8004 slice completed (2026-08-11). Bump this
-  // assertion whenever a phase completes; it guards against stale memory.
-  check('SESSION_STATE: Next Best Action = Phase 4', /Next Best Action: Mainnet Bridge Phase 4/.test(sess), 'next action wrong');
+  // 3→4 when Phase 3's ERC-8004 slice completed (2026-08-11), and 4→final
+  // review when Phase 4 (production architecture) completed (2026-08-11).
+  // Bump this assertion whenever a phase completes; it guards against stale memory.
+  check('SESSION_STATE: Next Best Action = final review (Phase 4 done)', /Next Best Action: Final review \+ submission pack/.test(sess), 'next action wrong');
   check('SESSION_STATE: mainnet mint verified', sess.includes('263312') && (sess.includes(MAINNET_TX) || sess.includes('0xd4715ce1…650c71')), 'mainnet values missing');
 }
 

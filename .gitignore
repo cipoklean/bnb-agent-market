@@ -18,6 +18,9 @@ cache/
 .env.local
 .env.*.local
 
+# vercel link artifacts (local project mapping; never committed)
+.vercel/
+
 # memory snapshots (timestamped) stay local unless you want them tracked
 memory/snapshots/
 

@@ -1,7 +1,7 @@
 // Evidence packet generator — server-side, reads the real memory bundle from disk
 // so the export carries honest proof (actual memory hashes, not re-typed text).
 import { NextResponse } from "next/server";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEMO_EVIDENCE } from "@/lib/data";
 
@@ -25,6 +25,9 @@ const DEMO_SCRIPT = [
 
 const MEMORY_DIR = join(process.cwd(), "..", "..", "memory");
 
+// The packet must carry REAL memory hashes or nothing. On serverless (Vercel)
+// the memory bundle is not deployed (repo root lives above the project root),
+// so the honest response is a candid 503 — never a silently-empty packet.
 function readMemory(rel: string): string {
   try {
     return readFileSync(join(MEMORY_DIR, rel), "utf8");
@@ -40,6 +43,17 @@ function trimHead(text: string, lines = 8): string {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const format = url.searchParams.get("format") ?? "json";
+
+  if (!existsSync(MEMORY_DIR)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          "Memory bundle unavailable: /api/evidence reads the repo's memory/ directory, which is local-only and not deployed to serverless. Run the app locally (npm run dev) to export the packet.",
+      },
+      { status: 503 }
+    );
+  }
 
   const mainMemoryFiles = [
     "PROJECT_MEMORY.md",
@@ -72,11 +86,11 @@ export async function GET(req: Request) {
       note: "Live confirmations and payments live in the BROWSER store (zustand persist) and cannot be read by this server endpoint. Serialize them from the Evidence Center page export — packets downloaded there include the real browser-store records at export time.",
     },
     integrationStatus: {
-      erc8004: "KNOWN — IdentityRegistry verified (mainnet/testnet); live metrics via 8004scan API for mainnet agent 263312 on /agents/portfolio-reporter",
-      x402: "DEMO — official payment schema UNKNOWN",
-      altana: "DEMO — SDK/contract interface UNKNOWN",
-      pancake: "DEMO — contract addresses/ABI UNKNOWN",
-      altlayer: "KNOWN — public 8004scan REST API integrated; live mainnet metrics panel (agents/portfolio-reporter)",
+      erc8004: "KNOWN — mainnet IdentityRegistry verified (AgentIdentity 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432); our agent 263312 registered (Phase 2 evidence)",
+      x402: "schema KNOWN (B402); settlement DEMO — facilitator onboarding-gated",
+      altana: "SDK + KeyStore addresses KNOWN; integration DEMO",
+      pancake: "addresses KNOWN (official deployments); execution adapter DEMO",
+      altlayer: "LIVE — public 8004scan directory + metrics API (Pro/AltLLM UNKNOWN)",
     },
     proofRule: "Every important action produces a proof: tx hash, memory hash, receipt, attestation, or log. Nothing is faked; adapters are labeled.",
   };

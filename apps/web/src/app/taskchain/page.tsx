@@ -1,5 +1,6 @@
-"use client";
-// TaskChain Bazaar — productivity & automation vertical landing
+// TaskChain Bazaar — productivity & automation vertical. Product copy
+// (templates + guardrails) is kept; the agent grid is the LIVE directory
+// (same 8004scan source as the marketplace).
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -10,9 +11,14 @@ import {
   Shield,
   Sparkles,
 } from "lucide-react";
-import AgentCard from "@/components/AgentCard";
+import MarketClient from "@/components/MarketClient";
+import SampleAgentGrid from "@/components/SampleAgentGrid";
 import { PanelGlass, SectionTitle } from "@/components/ui";
-import { AGENTS } from "@/lib/data";
+import { sampleAgentsEnabled } from "@/lib/data";
+import { normalizeScanEntry } from "@/lib/scan-normalize";
+import { listAgents } from "@/lib/scan-server";
+
+export const dynamic = "force-dynamic";
 
 const TEMPLATES = [
   {
@@ -37,8 +43,29 @@ const TEMPLATES = [
   },
 ];
 
-export default function TaskChainPage() {
-  const agents = AGENTS.filter((a) => a.vertical === "taskchain");
+export default async function TaskChainPage() {
+  if (sampleAgentsEnabled()) {
+    return (
+      <div className="flex flex-col gap-10">
+        <div>
+          <Link href="/" className="link inline-flex items-center gap-1 text-[13px]">
+            <ArrowLeft size={13} /> Home
+          </Link>
+        </div>
+        <section className="flex flex-col items-center py-6 text-center">
+          <span className="badge-gold mb-4">Vertical 02 — Productivity & Automation</span>
+          <h1 className="title-page max-w-2xl !text-[32px] leading-tight sm:!text-[38px]">TaskChain Bazaar</h1>
+          <p className="body-sm mt-3 max-w-xl !text-[15px]">
+            SAMPLE MODE — deterministic demo agents.
+          </p>
+        </section>
+        <SampleAgentGrid vertical="taskchain" />
+      </div>
+    );
+  }
+
+  const dir = await listAgents({ chainId: 56, limit: 24 });
+  const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
 
   return (
     <div className="flex flex-col gap-10">
@@ -56,11 +83,10 @@ export default function TaskChainPage() {
         </h1>
         <p className="body-sm mt-3 max-w-xl !text-[15px]">
           Productivity and automation agents for governance, claims, monitoring, and
-          reporting. Each one is scoped to a narrow job with a strict allowlist — the
-          safest agents on the market.
+          reporting — scoped to your session terms with a strict allowlist.
         </p>
-        <Link href="/marketplace?cat=taskchain" className="btn-primary mt-6">
-          Browse TaskChain agents <ArrowRight size={15} />
+        <Link href="/marketplace" className="btn-primary mt-6">
+          Browse the live directory <ArrowRight size={15} />
         </Link>
       </section>
 
@@ -83,17 +109,13 @@ export default function TaskChainPage() {
         </div>
       </section>
 
-      {/* Agents */}
-      <section>
+      {/* Live directory */}
+      <section className="flex flex-col gap-4">
         <SectionTitle
-          title="TaskChain agents"
-          sub="Narrow-scope agents with read-only or single-contract permissions."
+          title="TaskChain directory"
+          sub="Live from 8004scan — the indexer does not record vertical categories, so agent categories are unverified here."
         />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {agents.map((a) => (
-            <AgentCard key={a.id} agent={a} />
-          ))}
-        </div>
+        <MarketClient live={live} degraded={dir.degraded} total={dir.total} note="category unverified" />
       </section>
 
       {/* Note */}
@@ -101,13 +123,12 @@ export default function TaskChainPage() {
         <PanelGlass className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <Shield size={15} className="text-success" />
-            <h3 className="title-card">Why TaskChain agents are low-risk</h3>
+            <h3 className="title-card">Why sessions are low-risk by construction</h3>
           </div>
           <p className="body-sm">
-            The Portfolio Reporter is strictly read-only — no transaction execution,
-            reports only. The DAO Vote Executor can only call the governor contract's
-            vote function. The Airdrop Claimer can only call the claim contract and is
-            restricted to delivering to your account.
+            Whatever the agent, your session terms are enforced by your wallet session
+            keys: budget cap, contract allowlist, automatic expiry, and instant
+            revocation. Nothing happens until you confirm the memory hash.
           </p>
         </PanelGlass>
         <PanelGlass className="flex flex-col gap-2">
@@ -116,9 +137,8 @@ export default function TaskChainPage() {
             <h3 className="title-card">Every session is yours to stop</h3>
           </div>
           <p className="body-sm">
-            Whatever the task, every session has a memory hash you can verify, an expiry,
-            a budget cap, and a stop button. You can stop the agent anytime — no action
-            happens until you confirm it.
+            Every session has a memory hash you can verify, an expiry, a budget cap,
+            and a stop button. You can stop the agent anytime.
           </p>
         </PanelGlass>
       </section>

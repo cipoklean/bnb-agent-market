@@ -1,10 +1,11 @@
 // ERC-8004 adapter — agent identity + track record.
 // STATUS: KNOWN. IdentityRegistry verified on BSC mainnet/testnet (memory/INTEGRATIONS.md,
 // docs/research/ERC8004_RESEARCH_DOSSIER.md; live RPC check 2026-08-11).
-// Live metrics for the mainnet-registered agent (tokenId 263312, Phase 2 evidence in
-// docs/submission/evidence/) are read from the AltLayer 8004scan public REST API.
-// Every other agent keeps the labeled demo data so the marketplace stays deterministic.
-import { AGENTS, DEMO_MODE } from "../data";
+// The PRODUCTION directory is LIVE via 8004scan (lib/scan-server.ts listAgents +
+// the marketplace/vertical/home pages). This adapter's list/get paths operate on
+// SAMPLE_AGENTS only (dev sample registry, NEXT_PUBLIC_SAMPLE_DATA=1) — never on
+// production data.
+import { SAMPLE_AGENTS, DEMO_MODE } from "../data";
 import type { Agent, Erc8004ScanMetrics } from "../types";
 
 export interface IErc8004Adapter {
@@ -16,7 +17,7 @@ export interface IErc8004Adapter {
 }
 
 export const ERC8004_STATUS =
-  "KNOWN — IdentityRegistry verified; live 8004scan reads for mainnet agent 263312 (demo fallback for others)" as const;
+  "KNOWN — IdentityRegistry verified (mainnet/testnet); directory LIVE via 8004scan; adapter list/get paths operate on the dev sample registry only" as const;
 
 // The marketplace agent linked to our live ERC-8004 mainnet registration (Phase 2).
 export const MAINNET_AGENT_LINK = {
@@ -65,7 +66,7 @@ function mapScanMetrics(d: Record<string, unknown>): Erc8004ScanMetrics {
 export const erc8004Adapter: IErc8004Adapter = {
   async getAgentById(agentId) {
     await delay();
-    const agent = AGENTS.find((a) => a.id === agentId) ?? null;
+    const agent = SAMPLE_AGENTS.find((a) => a.id === agentId) ?? null;
     if (!agent || agentId !== MAINNET_AGENT_LINK.agentId) return agent;
     // Our mainnet agent: merge real 8004scan metrics onto local metadata.
     // getLiveScanMetrics never throws — it returns null on failure, so the
@@ -75,15 +76,15 @@ export const erc8004Adapter: IErc8004Adapter = {
   },
   async getAgentByAddress(address) {
     await delay();
-    return AGENTS.find((a) => a.address.toLowerCase() === address.toLowerCase()) ?? null;
+    return SAMPLE_AGENTS.find((a) => a.address.toLowerCase() === address.toLowerCase()) ?? null;
   },
   async listAgents(vertical) {
     await delay();
-    return vertical ? AGENTS.filter((a) => a.vertical === vertical) : AGENTS;
+    return vertical ? SAMPLE_AGENTS.filter((a) => a.vertical === vertical) : SAMPLE_AGENTS;
   },
   async getAttestations(agentId) {
     await delay();
-    return AGENTS.find((a) => a.id === agentId)?.attestations ?? [];
+    return SAMPLE_AGENTS.find((a) => a.id === agentId)?.attestations ?? [];
   },
   async getLiveScanMetrics(agentId) {
     // Only the mainnet-registered agent gets a real fetch; every other id

@@ -28,11 +28,19 @@ import {
 } from "@/components/ui";
 import TrustPanel from "@/components/TrustPanel";
 import RiskBadge from "@/components/RiskBadge";
-import { getAgent } from "@/lib/data";
+import { sampleAgentById } from "@/lib/data";
+import {
+  agentShapeFromView,
+  isLiveSourced,
+  metricsFromEnv,
+  normalizeScanEntry,
+  parseCanonicalId,
+  parseScanId,
+} from "@/lib/scan-normalize";
 import { erc8004Adapter, MAINNET_AGENT_LINK } from "@/lib/adapters/erc8004";
 import { useMarket } from "@/lib/store";
 import { formatAmount, formatPercent, timeAgo } from "@/lib/format";
-import type { Erc8004ScanMetrics, FeeModel } from "@/lib/types";
+import type { Agent, Erc8004ScanMetrics, FeeModel } from "@/lib/types";
 import {
   ResponsiveContainer,
   LineChart,
@@ -54,18 +62,62 @@ export default function AgentProfilePage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { sessions, submittedAgents } = useMarket();
-  const agent = useMemo(
-    () => getAgent(id ?? "") ?? submittedAgents.find((a) => a.id === id) ?? null,
-    [id, submittedAgents]
+
+  // Live-directory agents resolve by slug ("scan-56-263312") OR by the
+  // canonical ERC-8004 id ("56:0x<registry>:263312") — fetched through the
+  // same-origin proxy, then shaped like an Agent for the existing profile UI.
+  const lk = useMemo(
+    () => (id ? parseScanId(id) ?? parseCanonicalId(id) : null),
+    [id]
   );
+  const [liveAgent, setLiveAgent] = useState<Agent | null>(null);
+  const [liveFailed, setLiveFailed] = useState(false);
+
+  const agent = useMemo(
+    () =>
+      lk
+        ? liveAgent
+        : sampleAgentById(id ?? "") ?? submittedAgents.find((a) => a.id === id) ?? null,
+    [lk, liveAgent, id, submittedAgents]
+  );
+  const liveProfile = agent !== null && isLiveSourced(agent.id);
 
   const [scanMetrics, setScanMetrics] = useState<Erc8004ScanMetrics | null>(null);
 
-  // Live mainnet metrics — real 8004scan API fetch, only for our registered
-  // agent. The adapter never throws: on failure it logs a console warning and
-  // returns null, so the page gracefully keeps the deterministic demo data.
+  // Live-directory identity + metrics — one fetch through the proxy for both.
   useEffect(() => {
-    if (!id || id !== MAINNET_AGENT_LINK.agentId) return;
+    if (!lk) return;
+    let cancelled = false;
+    setLiveFailed(false);
+    setLiveAgent(null);
+    (async () => {
+      try {
+        const res = await fetch(`/api/8004scan/${lk.chainId}/${lk.tokenId}`, {
+          signal: AbortSignal.timeout(10_000),
+        });
+        const env = (await res.json()) as {
+          success?: boolean;
+          data?: Record<string, unknown>;
+        };
+        if (!cancelled && env?.success) {
+          setLiveAgent(agentShapeFromView(normalizeScanEntry(env.data ?? {}, Number(lk.chainId))));
+          setScanMetrics(metricsFromEnv(env, lk.chainId, lk.tokenId));
+        } else if (!cancelled) {
+          setLiveFailed(true);
+        }
+      } catch {
+        if (!cancelled) setLiveFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lk]);
+
+  // Live mainnet metrics — the old sample-registry path (portfolio-reporter in
+  // dev sample mode). The adapter never throws: console.warn + null, page stays.
+  useEffect(() => {
+    if (!id || lk || id !== MAINNET_AGENT_LINK.agentId) return;
     let cancelled = false;
     erc8004Adapter.getLiveScanMetrics(id).then((m) => {
       if (!cancelled) setScanMetrics(m);
@@ -73,7 +125,7 @@ export default function AgentProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, lk]);
 
   const liveSession = useMemo(
     () =>
@@ -86,11 +138,16 @@ export default function AgentProfilePage() {
   );
 
   if (!agent) {
+    const lkUp = lk && liveFailed;
     return (
       <EmptyState
         icon={<AlertTriangle size={20} />}
-        title="Agent not found"
-        description="This agent may have been delisted or the link is wrong."
+        title={lkUp ? "Agent unavailable" : "Agent not found"}
+        description={
+          lkUp
+            ? "The 8004scan indexer did not respond for this agent. Try again in a moment, or browse the marketplace."
+            : "This agent may have been delisted or the link is wrong."
+        }
         action={
           <Link href="/marketplace" className="btn-ghost btn-sm">
             <ArrowLeft size={13} /> Back to marketplace
@@ -118,7 +175,18 @@ export default function AgentProfilePage() {
                   <Check size={12} /> Verified
                 </span>
               )}
-              <RiskBadge risk={agent.riskLevel} />
+              {agent.verifiedVia8004 && !agent.verified && (
+                <span className="badge-green">
+                  <Check size={12} /> Verified via 8004scan
+                </span>
+              )}
+              {liveProfile ? (
+                <span className="badge-gray">
+                  Unrated — your session terms enforce limits
+                </span>
+              ) : (
+                <RiskBadge risk={agent.riskLevel} />
+              )}
             </div>
             <h1 className="title-page mt-2">{agent.name}</h1>
             <p className="body-sm mt-1 max-w-2xl">{agent.description}</p>
@@ -145,33 +213,61 @@ export default function AgentProfilePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <StatCard
-          label="Success rate"
-          value={formatPercent(agent.successRate)}
-          hint="Across all completed jobs"
-          tone="success"
-          icon={<Check size={14} />}
-        />
-        <StatCard
-          label="Jobs completed"
-          value={agent.jobsCompleted.toLocaleString()}
-          hint="Track record attested on-chain"
-          tone="default"
-          icon={<FileText size={14} />}
-        />
-        <StatCard
-          label="Average fee"
-          value={formatAmount(agent.avgFee, agent.paymentToken)}
-          hint={`${FEE_LABEL[agent.feeModel]} · ${agent.paymentToken}`}
-          tone="gold"
-          icon={<Zap size={14} />}
-        />
-      </div>
+      {liveProfile ? (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <StatCard
+            label="Health score"
+            value={scanMetrics ? (scanMetrics.healthScore === null ? "n/a" : String(scanMetrics.healthScore)) : "—"}
+            hint="8004scan health metric"
+            tone="success"
+            icon={<Activity size={14} />}
+          />
+          <StatCard
+            label="Total feedbacks"
+            value={scanMetrics ? scanMetrics.totalFeedbacks.toLocaleString() : "—"}
+            hint="On-chain feedback count"
+            tone="default"
+            icon={<MessageSquare size={14} />}
+          />
+          <StatCard
+            label="Total score"
+            value={scanMetrics ? (scanMetrics.totalScore === null ? "n/a" : String(scanMetrics.totalScore)) : "—"}
+            hint="8004scan composite"
+            tone="gold"
+            icon={<Star size={14} />}
+          />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <StatCard
+            label="Success rate"
+            value={formatPercent(agent.successRate)}
+            hint="Across all completed jobs"
+            tone="success"
+            icon={<Check size={14} />}
+          />
+          <StatCard
+            label="Jobs completed"
+            value={agent.jobsCompleted.toLocaleString()}
+            hint="Track record attested on-chain"
+            tone="default"
+            icon={<FileText size={14} />}
+          />
+          <StatCard
+            label="Average fee"
+            value={formatAmount(agent.avgFee, agent.paymentToken)}
+            hint={`${FEE_LABEL[agent.feeModel]} · ${agent.paymentToken}`}
+            tone="gold"
+            icon={<Zap size={14} />}
+          />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
-          {/* Performance */}
+          {/* Performance — sample-registry agents only; live agents have no
+              invented track record to chart. */}
+          {!liveProfile && (
           <Panel>
             <SectionTitle
               title="Performance"
@@ -208,6 +304,7 @@ export default function AgentProfilePage() {
               </LineChart>
             </ResponsiveContainer>
           </Panel>
+          )}
 
           {/* Capabilities */}
           <Panel>

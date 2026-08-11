@@ -1,5 +1,8 @@
 // PancakeSwap adapter — AlphaDesk agent actions (quotes, sim, rebalance).
-// STATUS: DEMO. Router + position manager addresses/ABIs on target network UNKNOWN (memory/UNKNOWN_ITEMS.md #9).
+// STATUS: DEMO. Contract ADDRESSES are KNOWN (verified verbatim from the
+// official pancake-v3-contracts deployments list, Phase 1 dossier); the
+// execution adapter (quote/simulate/swap) is DEMO pending a real client
+// (memory/UNKNOWN_ITEMS.md #9).
 import { shortId } from "../format";
 
 /** Deterministic FNV-1a string hash — same input always maps to the same value. */
@@ -40,7 +43,8 @@ export interface IPancakeAdapter {
   collectFees(positionId: string): Promise<{ ok: boolean; proof: string }>;
 }
 
-export const PANCAKE_STATUS = "DEMO (contract addresses/ABI UNKNOWN)" as const;
+export const PANCAKE_STATUS =
+  "addresses KNOWN — execution adapter DEMO" as const;
 
 export const pancakeAdapter: IPancakeAdapter = {
   async getQuote({ tokenIn, tokenOut, amountIn, slippageBps }) {

@@ -5,7 +5,7 @@ import { AlertTriangle, Check, RefreshCw, Shield, X } from "lucide-react";
 import { PanelGlass, CopyText, Tooltip, Spinner, TrustNote } from "@/components/ui";
 import { useMarket } from "@/lib/store";
 import { classifyManifestHash, type ManifestHashStatus } from "@/lib/memory";
-import { getAgent } from "@/lib/data";
+import { resolveSessionAgent } from "@/lib/scan-resolve";
 import type { SessionManifest, SessionStatus } from "@/lib/types";
 
 const PHASE: Record<SessionStatus, string> = {
@@ -33,11 +33,11 @@ export default function MemoryAttestationCard({
 }: {
   session: SessionManifest;
 }) {
-  const { confirmSession, reverifySession } = useMarket();
+  const { confirmSession, reverifySession, submittedAgents } = useMarket();
   const [status, setStatus] = useState<ManifestHashStatus | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [reverifying, setReverifying] = useState(false);
-  const agent = getAgent(session.agent_id);
+  const agent = resolveSessionAgent(session.agent_id, submittedAgents);
   const awaitingConfirm = session.status === "pending_confirmation";
 
   useEffect(() => {

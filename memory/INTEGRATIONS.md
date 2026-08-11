@@ -53,6 +53,21 @@ Status legend: KNOWN = official addresses/ABIs/SDK verified against docs/mainnet
 - ABIs: `@pancakeswap/v3-sdk` npm package (contract artifacts + token list); V3 MasterChef etc. in pancake-v3-contracts repo. Trading-agent guide: docs.pancakeswap.finance/trading-tools/building-trading-agents-on-pancakeswap-v3.
 - Adapter contract kept: `IPancakeAdapter` (getQuote, simulateRebalance, …). Real implementation: route quotes through QuoterV2/quoters (SmartRouter), execute through SwapRouter with slippage caps; position ops via NonfungiblePositionManager; AlphaDesk allowlist = the addresses above; simulation-before-execute stays.
 
+## Adapter label matrix (current truth — Phase 5, 2026-08-11)
+
+UI strings everywhere (adapters/*.ts STATUS, /api/evidence integrationStatus, settings, footer) now read:
+
+| Integration | Label |
+|---|---|
+| ERC-8004 | KNOWN — mainnet IdentityRegistry verified (0x8004A169FB4a3325136EB29fA0ceB6D2e539a432); our agent 263312 registered on-chain |
+| 8004scan (AltLayer) | LIVE — public directory + metrics API (listAgents, show, submissions, Live panels); 8004scan Pro / AltLLM API still UNKNOWN |
+| PancakeSwap | addresses KNOWN (official deployments list, Phase 1 dossier); execution adapter DEMO |
+| x402 (B402) | schema KNOWN (PaymentRequirements/Payload, EIP-712 eip3009/permit2); settlement DEMO — facilitator EOA + Permit2 proxy onboarding-gated |
+| Altana | SDK + KeyStore addresses KNOWN (KeyStore 0x6572427E…, KeyStoreController 0x0834Ee2C…); integration DEMO |
+
+Rule: "KNOWN" = verified against official docs/mainnet (Phase 1) and/or LIVE
+in the UI; "DEMO" = the execution client is not wired yet; never fake a proof.
+
 ## AltLayer (observability / 8004scan) — Status: KNOWN (AltLLM API still UNKNOWN)
 - Public REST API EXISTS. Base `https://8004scan.io/api/v1/public` (OpenAPI: `/docs/openapi.json`; interactive: `https://8004scan.io/developers/docs`). Optional `X-API-Key` header. No `api.8004scan.altlayer.io` — host is 8004scan.io.
 - Endpoints: `GET /agents` (list/filter, pagination), `GET /agents/{chainId}/{tokenId}` (agent detail incl. metrics: total_score, average_score, total_feedbacks, health_score, is_verified, star_count, x402_supported, supported_protocols), `GET /agents/search?q=` (hybrid semantic), `GET /accounts/{address}/agents`, `GET /stats`, `GET /feedbacks`, `GET /chains`. Response envelope `{success, data, meta{version, timestamp, requestId}}`; rate-limit headers X-RateLimit-Limit/-Remaining/-Reset.

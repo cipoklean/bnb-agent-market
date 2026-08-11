@@ -6,7 +6,7 @@ import { Check, ChevronRight, Clock, Copy, Shield } from "lucide-react";
 import { PanelGlass, CopyText, Tooltip } from "@/components/ui";
 import RiskBadge from "@/components/RiskBadge";
 import RevokeButton from "@/components/RevokeButton";
-import { getAgent } from "@/lib/data";
+import { resolveSessionAgent } from "@/lib/scan-resolve";
 import { countdown, formatAmount } from "@/lib/format";
 import type { SessionManifest, SessionStatus } from "@/lib/types";
 
@@ -28,7 +28,7 @@ export const SESSION_STATUS_META: Record<
 };
 
 export default function SessionPass({ session }: { session: SessionManifest }) {
-  const agent = getAgent(session.agent_id);
+  const agent = resolveSessionAgent(session.agent_id);
   const st = SESSION_STATUS_META[session.status];
   const [copied, setCopied] = useState(false);
 

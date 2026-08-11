@@ -1,7 +1,7 @@
 "use client";
 // Hire Wizard — 3 steps: choose task → set limits → confirm memory & pay
 import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -23,7 +23,14 @@ import {
 } from "@/components/ui";
 import PermissionEditor, { type PermissionValue } from "@/components/PermissionEditor";
 import PaymentSheet from "@/components/PaymentSheet";
-import { AGENTS, getAgent } from "@/lib/data";
+import { SAMPLE_AGENTS, sampleAgentById, sampleAgentsEnabled } from "@/lib/data";
+import {
+  agentShapeFromView,
+  GENERIC_CAPABILITY,
+  normalizeScanEntry,
+  parseCanonicalId,
+  parseScanId,
+} from "@/lib/scan-normalize";
 import { useMarket } from "@/lib/store";
 import { manifestHash, sha256Hex } from "@/lib/memory";
 import { isoDaysFromNow, shortId } from "@/lib/format";
@@ -74,16 +81,68 @@ function HireWizard() {
 
   const [step, setStep] = useState(1);
   const [agentId, setAgentId] = useState(
-    () => searchParams.get("agent") ?? AGENTS[0].id
+    () => searchParams.get("agent") ?? ""
   );
   const { submittedAgents } = useMarket();
-  // Submitted-portal agents resolve like registry agents so a hire never
-  // silently falls back to the wrong agent (AGENTS[0]).
-  const agent = getAgent(agentId) ?? submittedAgents.find((a) => a.id === agentId) ?? AGENTS[0];
-  const [capabilityId, setCapabilityId] = useState(agent.capabilities[0]?.id ?? "");
+
+  // Live-directory agents resolve by slug or canonical id — fetched through
+  // the same-origin proxy, then shaped like an Agent for the wizard UI.
+  const lk = useMemo(
+    () => (agentId ? parseScanId(agentId) ?? parseCanonicalId(agentId) : null),
+    [agentId]
+  );
+  const [liveAgent, setLiveAgent] = useState<Agent | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  useEffect(() => {
+    if (!lk) {
+      setLiveAgent(null);
+      return;
+    }
+    let cancelled = false;
+    setLiveLoading(true);
+    (async () => {
+      try {
+        const res = await fetch(`/api/8004scan/${lk.chainId}/${lk.tokenId}`, {
+          signal: AbortSignal.timeout(10_000),
+        });
+        const env = (await res.json()) as {
+          success?: boolean;
+          data?: Record<string, unknown>;
+        };
+        if (!cancelled && env?.success) {
+          setLiveAgent(agentShapeFromView(normalizeScanEntry(env.data ?? {}, Number(lk.chainId))));
+        }
+      } catch {
+        // leave liveAgent null -> "Agent not found" state
+      } finally {
+        if (!cancelled) setLiveLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [lk]);
+
+  const agent: Agent | null = useMemo(() => {
+    if (lk) return liveAgent;
+    return (
+      submittedAgents.find((a) => a.id === agentId) ??
+      (sampleAgentsEnabled() ? sampleAgentById(agentId) ?? null : null) ??
+      null
+    );
+  }, [lk, liveAgent, agentId, submittedAgents]);
+  const liveHire = agent !== null && /^(scan-|submitted-)/.test(agent.id);
+
+  // Live agents offer exactly one generic capability; the user sets the scope
+  // and fee cap themselves.
+  const [capabilityId, setCapabilityId] = useState("");
   const capability =
-    agent.capabilities.find((c) => c.id === capabilityId) ?? agent.capabilities[0];
-  const [perms, setPerms] = useState<PermissionValue>(() => defaultsForAgent(agent));
+    agent?.capabilities.find((c) => c.id === capabilityId) ??
+    agent?.capabilities[0] ??
+    null;
+  const [perms, setPerms] = useState<PermissionValue>(() => defaultsForAgent({} as Agent));
+  const [customScope, setCustomScope] = useState("");
 
   const [draftBase, setDraftBase] = useState<Omit<SessionManifest, "memory_hash"> | null>(null);
   const [draftHash, setDraftHash] = useState<string | null>(null);
@@ -96,13 +155,13 @@ function HireWizard() {
 
   // Reset capability + permissions when the agent changes
   useEffect(() => {
-    const a = getAgent(agentId) ?? submittedAgents.find((x) => x.id === agentId);
-    if (!a) return;
-    setCapabilityId(a.capabilities[0]?.id ?? "");
-    setPerms(defaultsForAgent(a));
+    if (!agent) return;
+    setCapabilityId(agent.capabilities[0]?.id ?? "");
+    setPerms(defaultsForAgent(agent));
     setCreated(null);
     setStatus("idle");
-  }, [agentId, submittedAgents]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, submittedAgents, liveAgent]);
 
   // Compute the live session memory hash
   useEffect(() => {
@@ -125,8 +184,12 @@ function HireWizard() {
         // stored one after creation.
         hash_version: "v2",
         scope: {
-          task_type: capability.id.replace(/^cap-/, ""),
-          description: `${capability.name} — ${capability.description}`,
+          // Live agents: the user defines the task; there is no registry
+          // capability catalog for them.
+          task_type: liveHire ? "custom_session" : capability.id.replace(/^cap-/, ""),
+          description: liveHire
+            ? customScope.trim() || GENERIC_CAPABILITY.description
+            : `${capability.name} — ${capability.description}`,
           parameters: {},
         },
         budget: perms.budget,
@@ -134,9 +197,11 @@ function HireWizard() {
         expiry: isoDaysFromNow(perms.expiryDays),
         payment: {
           method: "x402",
-          amount: capability.priceAmount,
+          // Live agents have no listed price — the fee cap the user sets in
+          // step 2 becomes the payable amount.
+          amount: liveHire ? perms.budget.max_per_action : capability.priceAmount,
           token: agent.paymentToken,
-          fee_model: capability.pricingType,
+          fee_model: liveHire ? "pay_per_task" : capability.pricingType,
         },
         created_at: new Date().toISOString(),
         status: "pending_confirmation",
@@ -152,7 +217,7 @@ function HireWizard() {
       live = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agent, capability, perms, walletAddress, draftSessionId, nonce]);
+  }, [agent, capability, perms, walletAddress, draftSessionId, nonce, liveHire, customScope]);
 
   const total = parseFloat(perms.budget.max_total);
   const per = parseFloat(perms.budget.max_per_action);
@@ -258,6 +323,28 @@ function HireWizard() {
     );
   }
 
+  if (!agent) {
+    if (liveLoading) {
+      return (
+        <div className="mx-auto flex min-h-[40vh] max-w-xl items-center justify-center">
+          <Spinner label="Loading agent from the 8004scan directory…" />
+        </div>
+      );
+    }
+    return (
+      <EmptyState
+        icon={<AlertTriangle size={20} />}
+        title="Agent not found"
+        description="Pick an agent from the marketplace to hire it — live directory agents load through the 8004scan indexer."
+        action={
+          <Link href="/marketplace" className="btn-ghost btn-sm">
+            Back to marketplace
+          </Link>
+        }
+      />
+    );
+  }
+
   if (!capability) {
     return (
       <EmptyState
@@ -323,20 +410,37 @@ function HireWizard() {
       {/* Step 1 — choose task */}
       {step === 1 && (
         <Panel className="flex flex-col gap-5">
-          <div>
-            <div className="label mb-1.5">Agent</div>
-            <select
-              className="select"
-              value={agent.id}
-              onChange={(e) => setAgentId(e.target.value)}
-            >
-              {AGENTS.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name} — {a.category}
-                </option>
-              ))}
-            </select>
-          </div>
+          {liveHire ? (
+            <div>
+              <div className="label mb-1.5">Agent</div>
+              <div className="flex items-center justify-between gap-3 rounded-btn border border-border bg-surface-2/40 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="truncate text-[15px] font-semibold">{agent.name}</div>
+                  <p className="caption mt-0.5 truncate">
+                    {agent.agentId8004} · live from the ERC-8004 directory
+                  </p>
+                </div>
+                <Link href="/marketplace" className="btn-ghost btn-sm shrink-0">
+                  Change
+                </Link>
+              </div>
+            </div>
+          ) : sampleAgentsEnabled() ? (
+            <div>
+              <div className="label mb-1.5">Agent</div>
+              <select
+                className="select"
+                value={agent.id}
+                onChange={(e) => setAgentId(e.target.value)}
+              >
+                {SAMPLE_AGENTS.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} — {a.category}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div>
             <div className="label mb-1.5">Task (capability)</div>
             <div className="flex flex-col gap-2">
@@ -354,13 +458,32 @@ function HireWizard() {
                     <div className="text-[15px] font-semibold">{c.name}</div>
                     <p className="body-sm mt-0.5">{c.description}</p>
                   </div>
-                  <span className="badge-gold tnum shrink-0">
-                    {c.priceAmount} {agent.paymentToken}
-                  </span>
+                  {!liveHire && (
+                    <span className="badge-gold tnum shrink-0">
+                      {c.priceAmount} {agent.paymentToken}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </div>
+          {liveHire && (
+            <div>
+              <div className="label mb-1.5">
+                Task scope — describe what you want the agent to do
+              </div>
+              <textarea
+                className="input min-h-[96px] w-full resize-y"
+                value={customScope}
+                onChange={(e) => setCustomScope(e.target.value)}
+                placeholder="e.g. Rebalance my CAKE/BNB V3 position when it drifts more than 0.5% out of range; cap each action at 0.5 BNB."
+              />
+              <p className="caption mt-1">
+                This text becomes the session task description and is covered by the
+                memory hash. The fee cap is set in the next step.
+              </p>
+            </div>
+          )}
           <div className="flex justify-end">
             <button onClick={() => setStep(2)} disabled={!stepValid} className="btn-primary">
               Continue <ArrowRight size={14} />
@@ -403,6 +526,9 @@ function HireWizard() {
                     <h3 className="title-card">Session created and confirmed</h3>
                     <p className="caption">
                       The agent may act within the limits you set. You can stop it anytime.
+                      {liveHire
+                        ? " Execution depends on the agent's own endpoints; your session terms are enforced by your wallet session keys."
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -470,6 +596,12 @@ function HireWizard() {
                     This agent must confirm the session before acting. No action happens
                     until you confirm.
                   </TrustNote>
+                  {liveHire && (
+                    <p className="caption">
+                      Execution depends on the agent's own endpoints; your session terms
+                      are enforced by your wallet session keys.
+                    </p>
+                  )}
                 </div>
               </Panel>
               {draftBase && <PaymentSheet session={draftBase as SessionManifest} reviewOnly />}

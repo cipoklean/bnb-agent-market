@@ -1,6 +1,6 @@
-// Home — hero with REAL indexer stats + live directory featured agents.
-// Product copy (how it works, trust & safety) is unchanged; the numbers are
-// no longer invented. Featured = top 3 by total_feedbacks from the live list.
+"use client";
+// SAMPLE MODE (dev-only, NEXT_PUBLIC_SAMPLE_DATA=1): the original home page,
+// preserved verbatim against SAMPLE_AGENTS. Never used in the production path.
 import Link from "next/link";
 import {
   ArrowRight,
@@ -14,20 +14,15 @@ import {
   Shield,
   StopCircle,
 } from "lucide-react";
-import ScanAgentCard from "@/components/ScanAgentCard";
-import SampleHome from "@/components/SampleHome";
-import { PanelGlass, SectionTitle } from "@/components/ui";
-import { sampleAgentsEnabled } from "@/lib/data";
-import { normalizeScanEntry } from "@/lib/scan-normalize";
-import { listAgents } from "@/lib/scan-server";
-
-export const dynamic = "force-dynamic";
+import AgentCard from "@/components/AgentCard";
+import { PanelGlass, SectionTitle, Tooltip } from "@/components/ui";
+import { SAMPLE_AGENTS } from "@/lib/data";
 
 const STEPS = [
   {
     icon: Search,
     title: "1. Choose an agent",
-    body: "Browse the live ERC-8004 directory — on-chain identity and real indexer scores.",
+    body: "Browse verified agents with on-chain identity, track records, and honest risk levels.",
   },
   {
     icon: Settings,
@@ -51,28 +46,21 @@ const TRUST = [
   { icon: Eye, text: "No action happens until you confirm." },
 ];
 
-export default async function HomePage() {
-  // Dev-only sample registry (NEXT_PUBLIC_SAMPLE_DATA=1) — never production.
-  if (sampleAgentsEnabled()) return <SampleHome />;
-
-  const dir = await listAgents({ chainId: 56, limit: 24 });
-  const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
-  const featured = [...live]
-    .sort((a, b) => b.totalFeedbacks - a.totalFeedbacks)
-    .slice(0, 3);
+export default function SampleHome() {
+  const featured = SAMPLE_AGENTS.filter((a) => a.featured);
+  const totalJobs = SAMPLE_AGENTS.reduce((s, a) => s + a.jobsCompleted, 0);
 
   return (
     <div className="flex flex-col gap-14">
-      {/* Hero */}
       <section className="flex flex-col items-center py-10 text-center sm:py-16">
         <div className="badge-gold mb-6">
-          BNB Smart Chain · ERC-8004 identity · x402 payments
+          SAMPLE MODE · BNB Smart Chain · ERC-8004 identity · x402 payments
         </div>
         <h1 className="title-page max-w-3xl !text-[34px] leading-tight sm:!text-[42px]">
           Hire agents you can trust. Stop them anytime.
         </h1>
         <p className="body-sm mt-4 max-w-xl !text-[16px]">
-          A calm marketplace for AI agents on BNB Smart Chain. Discover indexed agents,
+          A calm marketplace for AI agents on BNB Smart Chain. Discover verified agents,
           give them limits, confirm their memory, and watch every action with proof.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -84,26 +72,18 @@ export default async function HomePage() {
           </Link>
         </div>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-[13px] text-muted">
-          {dir.degraded ? (
-            <span className="badge-amber">Indexer unreachable — directory paused</span>
-          ) : (
-            <>
-              <span>
-                <span className="tnum font-semibold text-text">
-                  {dir.total.toLocaleString()}
-                </span>{" "}
-                agents indexed on BSC
-              </span>
-              <span>
-                <span className="tnum font-semibold text-text">{live.length}</span>{" "}
-                listed in this directory
-              </span>
-            </>
-          )}
+          <span>
+            <span className="tnum font-semibold text-text">{SAMPLE_AGENTS.length}</span> sample agents
+          </span>
+          <span>
+            <span className="tnum font-semibold text-text">{totalJobs.toLocaleString()}</span> sample jobs
+          </span>
+          <Tooltip label="Dev-only sample data behind NEXT_PUBLIC_SAMPLE_DATA=1.">
+            <span className="badge-amber !cursor-help">Sample data</span>
+          </Tooltip>
         </div>
       </section>
 
-      {/* How it works */}
       <section>
         <SectionTitle
           title="How it works"
@@ -122,7 +102,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Trust & safety */}
       <section>
         <SectionTitle
           title="Trust and safety"
@@ -152,34 +131,21 @@ export default async function HomePage() {
         </PanelGlass>
       </section>
 
-      {/* Featured — top of the live directory by real feedback */}
       <section>
         <SectionTitle
-          title="Top of the directory"
-          sub="The most-attested agents on the indexer right now — real feedback, no invented track records."
+          title="Featured agents"
+          sub="Start with the most trusted agents in each vertical."
           right={
             <Link href="/marketplace" className="link text-[13px]">
-              View the full directory <ArrowRight size={12} className="inline" />
+              View all agents <ArrowRight size={12} className="inline" />
             </Link>
           }
         />
-        {featured.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {featured.map((v) => (
-              <ScanAgentCard key={v.slug} view={v} />
-            ))}
-          </div>
-        ) : (
-          <PanelGlass>
-            <p className="body-sm">
-              The directory is empty right now — check back shortly, or{" "}
-              <Link href="/submit" className="link">
-                submit an agent
-              </Link>
-              .
-            </p>
-          </PanelGlass>
-        )}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {featured.map((a) => (
+            <AgentCard key={a.id} agent={a} />
+          ))}
+        </div>
       </section>
     </div>
   );

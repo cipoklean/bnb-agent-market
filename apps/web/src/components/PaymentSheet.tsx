@@ -5,7 +5,7 @@ import { Check, Database, FileText, Wallet } from "lucide-react";
 import { CopyText, PanelGlass, Spinner, Tooltip, TrustNote } from "@/components/ui";
 import { x402Adapter, X402_STATUS, type PaymentRequest } from "@/lib/adapters/x402";
 import { useMarket } from "@/lib/store";
-import { getAgent } from "@/lib/data";
+import { resolveSessionAgent } from "@/lib/scan-resolve";
 import { sha256Hex } from "@/lib/memory";
 import { countdown, formatAmount, timeAgo } from "@/lib/format";
 import type { SessionManifest } from "@/lib/types";
@@ -18,11 +18,11 @@ export default function PaymentSheet({
   /** Draft review mode: shows the request, hides Approve — payment happens when the session is created. */
   reviewOnly?: boolean;
 }) {
-  const { payments, markPaid, addEvent } = useMarket();
+  const { payments, markPaid, addEvent, submittedAgents } = useMarket();
   const [request, setRequest] = useState<PaymentRequest | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const agent = getAgent(session.agent_id);
+  const agent = resolveSessionAgent(session.agent_id, submittedAgents);
   const record = payments.find(
     (p) => p.session_id === session.session_id && p.status === "paid"
   );

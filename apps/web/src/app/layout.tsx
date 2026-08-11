@@ -31,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 text-[12px] text-muted sm:flex-row sm:px-6">
             <div>BNB Agent Market Core · AlphaDesk · TaskChain Bazaar</div>
             <div className="flex items-center gap-2">
-              <span className="dot dot-green" /> Demo build — adapters labeled; official SDKs marked UNKNOWN
+              <span className="dot dot-green" /> Live 8004scan directory · execution adapters labeled
             </div>
           </div>
         </footer>

@@ -1,5 +1,7 @@
-// Mock agent registry + demo session data (DEMO MODE — honest, labeled, deterministic).
-// Real ERC-8004 / on-chain data plugs in via adapters (src/lib/adapters) when verified.
+// Demo/sample data (DEV-ONLY, off by default: NEXT_PUBLIC_SAMPLE_DATA=1).
+// The production path is the LIVE 8004scan directory (lib/scan-server.ts
+// listAgents) + locally submitted agents. These sample agents exist only for
+// local UI-dev against deterministic data, and are labeled SAMPLE everywhere.
 
 import type {
   Agent,
@@ -13,6 +15,10 @@ import { isoDaysFromNow } from "./format";
 
 export const DEMO_MODE = true;
 
+/** Dev-only sample registry: enabled ONLY with NEXT_PUBLIC_SAMPLE_DATA=1. */
+export const sampleAgentsEnabled = (): boolean =>
+  process.env.NEXT_PUBLIC_SAMPLE_DATA === "1";
+
 const txs = {
   rebalance: "0x8f2a1c4e9b7d3f6051a8c2e4b6d9f0a3c5e7b1d8",
   harvest: "0x3d7f9b2a4c6e8d0f1b3a5c7e9d2f4b6a8c0e1d3",
@@ -23,7 +29,7 @@ const txs = {
   x402: "0x1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9",
 } as const;
 
-export const AGENTS: Agent[] = [
+export const SAMPLE_AGENTS: Agent[] = [
   {
     id: "alpha-lp-rebalancer",
     agentId8004: "8004.0x7AE2b2f6a1B4c8d0e3F5a9b1C3d5E7f9A1b3C5d7E",
@@ -281,7 +287,7 @@ export const AGENTS: Agent[] = [
   },
 ];
 
-export const getAgent = (id: string) => AGENTS.find((a) => a.id === id);
+export const sampleAgentById = (id: string) => SAMPLE_AGENTS.find((a) => a.id === id);
 
 // ---- Demo sessions / confirmations / payments / events ----
 

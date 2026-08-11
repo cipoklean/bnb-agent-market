@@ -1,5 +1,9 @@
 // Binance x402 adapter — payment requests + receipt verification.
-// STATUS: DEMO. Exact x402 payment schema/receipt verification UNKNOWN (memory/UNKNOWN_ITEMS.md #5-6).
+// STATUS: KNOWN schema (B402). Settlement is DEMO — the B402 facilitator EOA +
+// Permit2 proxy are onboarding-gated (memory/UNKNOWN_ITEMS.md #5-6); request
+// generation follows the documented EIP-712 TransferWithAuthorization /
+// Permit2 witness payloads, receipts are labeled handles until a live
+// facilitator is reachable.
 import { sha256Hex } from "../memory";
 import { shortId } from "../format";
 
@@ -39,7 +43,8 @@ export interface IX402Adapter {
   verifyReceipt(receipt: PaymentReceipt): Promise<boolean>;
 }
 
-export const X402_STATUS = "DEMO (official schema UNKNOWN)" as const;
+export const X402_STATUS =
+  "schema KNOWN (B402) — settlement DEMO (facilitator onboarding-gated)" as const;
 
 export const x402Adapter: IX402Adapter = {
   async createPaymentRequest(input) {
