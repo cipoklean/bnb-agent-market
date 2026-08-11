@@ -21,6 +21,11 @@ export default function AgentCard({ agent }: { agent: Agent }) {
               <Check size={12} /> Verified
             </span>
           )}
+          {agent.verifiedVia8004 && (
+            <span className="badge-green">
+              <Check size={12} /> Verified via 8004scan
+            </span>
+          )}
         </div>
 
         <h3 className="title-card mt-3 transition-colors group-hover:text-primary">

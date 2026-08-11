@@ -6,6 +6,7 @@ import { ArrowLeft, Search } from "lucide-react";
 import AgentCard from "@/components/AgentCard";
 import { EmptyState } from "@/components/ui";
 import { AGENTS } from "@/lib/data";
+import { useMarket } from "@/lib/store";
 import type { RiskLevel, Vertical } from "@/lib/types";
 
 type Cat = "all" | Vertical;
@@ -19,6 +20,9 @@ export default function MarketplacePage() {
   const [cat, setCat] = useState<Cat>("all");
   const [risk, setRisk] = useState<RiskFilter>("all");
   const [sort, setSort] = useState<SortKey>("success");
+  // Agents submitted through the portal merge into the market listing —
+  // registry agents always come first, submitted ones after.
+  const { submittedAgents } = useMarket();
 
   // Honor ?cat=alphadesk|taskchain on mount via window.location.search.
   // Deliberately NOT useSearchParams — keeps the page static-build friendly.
@@ -29,7 +33,7 @@ export default function MarketplacePage() {
 
   const agents = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = AGENTS.filter((a) => {
+    let list = [...submittedAgents, ...AGENTS].filter((a) => {
       if (cat !== "all" && a.vertical !== cat) return false;
       if (risk !== "all" && a.riskLevel !== risk) return false;
       if (
@@ -43,7 +47,7 @@ export default function MarketplacePage() {
     if (sort === "fee") list = [...list].sort((a, b) => parseFloat(a.avgFee) - parseFloat(b.avgFee));
     if (sort === "risk") list = [...list].sort((a, b) => RISK_ORDER[a.riskLevel] - RISK_ORDER[b.riskLevel]);
     return list;
-  }, [query, cat, risk, sort]);
+  }, [query, cat, risk, sort, submittedAgents]);
 
   const clearFilters = () => {
     setQuery("");

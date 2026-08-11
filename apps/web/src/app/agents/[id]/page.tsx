@@ -53,8 +53,11 @@ const FEE_LABEL: Record<FeeModel, string> = {
 export default function AgentProfilePage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { sessions } = useMarket();
-  const agent = useMemo(() => getAgent(id ?? ""), [id]);
+  const { sessions, submittedAgents } = useMarket();
+  const agent = useMemo(
+    () => getAgent(id ?? "") ?? submittedAgents.find((a) => a.id === id) ?? null,
+    [id, submittedAgents]
+  );
 
   const [scanMetrics, setScanMetrics] = useState<Erc8004ScanMetrics | null>(null);
 

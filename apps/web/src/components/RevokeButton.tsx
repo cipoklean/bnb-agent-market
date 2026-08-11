@@ -8,6 +8,7 @@ import { useState } from "react";
 import { AlertTriangle, StopCircle } from "lucide-react";
 import { Modal, Spinner } from "@/components/ui";
 import { useMarket } from "@/lib/store";
+import { HUMAN_CALLER_ID } from "@/lib/delegation";
 import type { SessionManifest } from "@/lib/types";
 
 export default function RevokeButton({
@@ -23,6 +24,7 @@ export default function RevokeButton({
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [revoking, setRevoking] = useState(false);
+  const [error, setError] = useState("");
 
   const stopped = session.status === "revoked";
   const canStop = typed === "CONFIRM";
@@ -31,14 +33,26 @@ export default function RevokeButton({
     if (revoking) return;
     setOpen(false);
     setTyped("");
+    setError("");
   };
 
   const handleStop = async () => {
     setRevoking(true);
-    await revokeSession(session.session_id);
-    setRevoking(false);
-    setTyped("");
-    setOpen(false);
+    setError("");
+    try {
+      // The UI is operated by the human principal — always the human caller.
+      // Agent callers act through the A2A API path, never this button
+      // (strict delegation tree, D008).
+      await revokeSession(session.session_id, HUMAN_CALLER_ID);
+      setTyped("");
+      setOpen(false);
+    } catch (e) {
+      // Denied by the delegation tree (e.g. an agent caller) — surface honestly.
+      setError(e instanceof Error ? e.message : "Revocation denied.");
+      setTyped("");
+    } finally {
+      setRevoking(false);
+    }
   };
 
   return (
@@ -77,6 +91,12 @@ export default function RevokeButton({
               placeholder="CONFIRM"
             />
           </div>
+          {error && (
+            <div className="flex items-start gap-2.5 rounded-btn border border-danger/30 bg-danger/8 p-3 text-[13px] text-danger">
+              <AlertTriangle size={15} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
           <div className="flex justify-end gap-2">
             <button onClick={close} className="btn-ghost">
               Keep running

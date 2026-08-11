@@ -102,7 +102,18 @@ export default function DashboardPage() {
             </Link>
           }
         />
-        {activeSessions.length > 0 ? (
+        {sessions.length === 0 ? (
+          <EmptyState
+            icon={<Zap size={20} />}
+            title="No active sessions."
+            description="Hire your first agent from the marketplace to get started."
+            action={
+              <Link href="/marketplace" className="btn-primary btn-sm">
+                Explore Marketplace
+              </Link>
+            }
+          />
+        ) : activeSessions.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeSessions.map((s) => (
               <SessionPass key={s.session_id} session={s} />
@@ -111,7 +122,7 @@ export default function DashboardPage() {
         ) : (
           <EmptyState
             icon={<Zap size={20} />}
-            title="No active sessions"
+            title="No active sessions."
             description="Hire an agent to create a session with limits you control."
             action={
               <Link href="/marketplace" className="btn-primary btn-sm">

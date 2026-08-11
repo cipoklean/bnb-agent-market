@@ -14,6 +14,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/memory", label: "Memory" },
   { href: "/evidence", label: "Evidence" },
+  { href: "/submit", label: "Submit" },
 ];
 
 export default function SiteHeader() {

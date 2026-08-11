@@ -76,7 +76,10 @@ function HireWizard() {
   const [agentId, setAgentId] = useState(
     () => searchParams.get("agent") ?? AGENTS[0].id
   );
-  const agent = getAgent(agentId) ?? AGENTS[0];
+  const { submittedAgents } = useMarket();
+  // Submitted-portal agents resolve like registry agents so a hire never
+  // silently falls back to the wrong agent (AGENTS[0]).
+  const agent = getAgent(agentId) ?? submittedAgents.find((a) => a.id === agentId) ?? AGENTS[0];
   const [capabilityId, setCapabilityId] = useState(agent.capabilities[0]?.id ?? "");
   const capability =
     agent.capabilities.find((c) => c.id === capabilityId) ?? agent.capabilities[0];
@@ -93,13 +96,13 @@ function HireWizard() {
 
   // Reset capability + permissions when the agent changes
   useEffect(() => {
-    const a = getAgent(agentId);
+    const a = getAgent(agentId) ?? submittedAgents.find((x) => x.id === agentId);
     if (!a) return;
     setCapabilityId(a.capabilities[0]?.id ?? "");
     setPerms(defaultsForAgent(a));
     setCreated(null);
     setStatus("idle");
-  }, [agentId]);
+  }, [agentId, submittedAgents]);
 
   // Compute the live session memory hash
   useEffect(() => {

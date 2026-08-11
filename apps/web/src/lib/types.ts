@@ -78,6 +78,8 @@ export interface Agent {
   verified: boolean;
   /** Live 8004scan indexer metrics — set only for the mainnet-registered agent. */
   scanMetrics?: Erc8004ScanMetrics | null;
+  /** True for agents listed through the submission portal after 8004scan verification. */
+  verifiedVia8004?: boolean;
 }
 
 export interface SessionScope {
@@ -123,6 +125,13 @@ export interface SessionManifest {
   hash_version?: "v2" | "seed";
   created_at: string;
   status: SessionStatus;
+  /**
+   * Delegation tree (D008): who delegated this session. Undefined = hired by
+   * the human. Set to the DELEGATING AGENT's identity (agent_id) when an agent
+   * hired this agent. Revocation: human may always revoke; an agent may only
+   * revoke sessions where parent_session_id === its own id (its sub-agents).
+   */
+  parent_session_id?: string;
 }
 
 export interface SessionEvent {

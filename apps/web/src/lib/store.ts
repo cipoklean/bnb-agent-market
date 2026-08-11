@@ -2,9 +2,8 @@
 // Client state — wallet (demo), sessions, confirmations, payments, event log.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { SessionManifest, Confirmation, PaymentRecord, SessionEvent } from "./types";
+import type { Agent, SessionManifest, Confirmation, PaymentRecord, SessionEvent } from "./types";
 import {
-  DEMO_SESSIONS,
   DEMO_CONFIRMATIONS,
   DEMO_PAYMENTS,
   DEMO_EVENTS,
@@ -12,6 +11,7 @@ import {
 } from "./data";
 import { buildManifest, verifyManifestHash, sha256Hex, manifestHash } from "./memory";
 import { shortId } from "./format";
+import { assertCanRevoke, HUMAN_CALLER_ID } from "./delegation";
 
 export interface ExportSnapshot {
   id: string;
@@ -23,6 +23,8 @@ interface MarketState {
   walletAddress: string | null;
   walletConnected: boolean;
   sessions: SessionManifest[];
+  /** Agents listed through the submission portal (verified via 8004scan). */
+  submittedAgents: Agent[];
   confirmations: Confirmation[];
   payments: PaymentRecord[];
   events: SessionEvent[];
@@ -44,7 +46,15 @@ interface MarketState {
     createdAt?: string;
   }) => Promise<SessionManifest | null>;
   confirmSession: (sessionId: string) => Promise<boolean>;
-  revokeSession: (sessionId: string) => Promise<boolean>;
+  /**
+   * Strict delegation tree (D008): revoke requires a caller identity.
+   * - callerId "user" (the human) → always allowed.
+   * - callerId = an agent identity → allowed ONLY when the target session's
+   *   parent_session_id matches it (the agent revoking its own sub-agent).
+   *   Anything else throws DELEGATION_DENY_MESSAGE.
+   */
+  revokeSession: (sessionId: string, callerId?: string) => Promise<boolean>;
+  addSubmittedAgent: (agent: Agent) => void;
   /** F6 — re-fingerprint a pre-upgrade session with the current hash algorithm. */
   reverifySession: (sessionId: string) => Promise<boolean>;
   addEvent: (e: Omit<SessionEvent, "id" | "ts">) => void;
@@ -64,7 +74,10 @@ export const useMarket = create<MarketState>()(
     (set, get) => ({
       walletAddress: null,
       walletConnected: false,
-      sessions: DEMO_SESSIONS,
+      // Production-empty: no pre-seeded demo sessions. Sessions are created
+      // only through the hire flow (or imported). (Purge decision, Phase 4.)
+      sessions: [],
+      submittedAgents: [],
       confirmations: DEMO_CONFIRMATIONS,
       payments: DEMO_PAYMENTS,
       events: DEMO_EVENTS,
@@ -182,9 +195,13 @@ export const useMarket = create<MarketState>()(
         return true;
       },
 
-      revokeSession: async (sessionId) => {
+      revokeSession: async (sessionId, callerId = HUMAN_CALLER_ID) => {
         const session = get().sessions.find((s) => s.session_id === sessionId);
         if (!session) return true;
+        // Strict delegation tree (D008): the human may always revoke; an agent
+        // caller may only revoke a session it delegated (parent_session_id
+        // matches). Denials throw — the UI surfaces the message.
+        assertCanRevoke(session, callerId);
         // status is part of the manifest hash — recompute the fingerprint over
         // the revoked manifest (seed sessions keep their labeled placeholder).
         const isSeed = session.hash_version === "seed";
@@ -230,6 +247,13 @@ export const useMarket = create<MarketState>()(
             ...s.events,
           ],
         })),
+
+      addSubmittedAgent: (agent) =>
+        set((s) =>
+          s.submittedAgents.some((a) => a.id === agent.id)
+            ? s
+            : { submittedAgents: [...s.submittedAgents, agent] }
+        ),
 
       reverifySession: async (sessionId) => {
         const session = get().sessions.find((s) => s.session_id === sessionId);
@@ -311,15 +335,32 @@ export const useMarket = create<MarketState>()(
 
       reset: () =>
         set({
-          sessions: DEMO_SESSIONS,
-          confirmations: DEMO_CONFIRMATIONS,
-          payments: DEMO_PAYMENTS,
-          events: DEMO_EVENTS,
+          // Reset = production-empty: no fake data comes back.
+          sessions: [],
+          submittedAgents: [],
+          confirmations: [],
+          payments: [],
+          events: [],
           snapshots: [],
           requireTypedConfirm: true,
         }),
     }),
-    { name: "bnb-agent-market-store" }
+    {
+      name: "bnb-agent-market-store",
+      // v2: persisted demo-seed sessions (hash_version "seed") are purged on
+      // rehydrate so pre-existing users also land on the production-empty
+      // dashboard. Real user-created manifests (v2) are kept untouched.
+      version: 2,
+      migrate: (persisted) => {
+        const state = (persisted as { state?: Record<string, unknown> } | undefined)?.state ?? {};
+        const sessions = Array.isArray(state.sessions)
+          ? (state.sessions as { hash_version?: string }[]).filter(
+              (s) => s.hash_version !== "seed"
+            )
+          : [];
+        return { ...(persisted as object), state: { ...state, sessions } };
+      },
+    }
   )
 );
 
