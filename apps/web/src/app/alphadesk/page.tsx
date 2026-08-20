@@ -115,7 +115,7 @@ export default async function AlphaDeskPage() {
             </div>
             <p className="body-sm">
               Your session terms (budget, allowlist, expiry, revoke) are enforced by your
-              wallet session keys. Execution beyond that depends on the agent's own
+              wallet session keys. Execution beyond that depends on the agent&apos;s own
               endpoints — every action is recorded with proof.
             </p>
           </PanelGlass>

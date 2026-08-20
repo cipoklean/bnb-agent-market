@@ -209,7 +209,7 @@ export default function MemoryPage() {
                 <CopyText text={`0x${attestation.memoryHash}`} />
               </div>
               <p className="caption mt-2">
-                Session {attestation.sessionId} · phase "{attestation.currentPhase}" · next:{" "}
+                Session {attestation.sessionId} · phase &quot;{attestation.currentPhase}&quot; · next:{" "}
                 {attestation.nextBestAction}
               </p>
             </div>

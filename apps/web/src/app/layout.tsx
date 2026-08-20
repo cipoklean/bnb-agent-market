@@ -16,9 +16,33 @@ const ibmMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://bnb-agent-market.vercel.app"
+  ),
   title: "BNB Agent Market Core — Discover · Hire · Verify",
   description:
     "A marketplace layer for discovering, hiring, paying, monitoring, and revoking AI agents on BNB Smart Chain. AlphaDesk for DeFi. TaskChain Bazaar for productivity.",
+  keywords: [
+    "BNB Smart Chain",
+    "ERC-8004",
+    "AI agents",
+    "x402",
+    "agent marketplace",
+    "PancakeSwap",
+  ],
+  openGraph: {
+    type: "website",
+    title: "Hire agents you can trust. Stop them anytime.",
+    description:
+      "Discover, hire, pay, monitor, and revoke AI agents on BNB Smart Chain — spend-capped sessions with a memory-verified confirmation layer.",
+    siteName: "BNB Agent Market Core",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BNB Agent Market Core",
+    description:
+      "Hire agents you can trust. Stop them anytime. ERC-8004 identity · x402 payments · revocable sessions.",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

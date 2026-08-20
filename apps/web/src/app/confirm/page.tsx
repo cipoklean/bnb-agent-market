@@ -258,7 +258,7 @@ export default function ConfirmPage() {
           )}
           {!matches && diffSession && !checking && (
             <TrustNote>
-              If hashes match, the session memory is intact. If they don't, stop the
+              If hashes match, the session memory is intact. If they don&apos;t, stop the
               agent now. Seeded demo sessions show labeled placeholder hashes — sessions
               from the Hire flow match.
             </TrustNote>

@@ -116,4 +116,57 @@
   .stagger > *:nth-child(4) { animation-delay: 180ms; }
   .stagger > *:nth-child(5) { animation-delay: 240ms; }
   .stagger > *:nth-child(6) { animation-delay: 300ms; }
+
+  /* --- Bold landing --- */
+  /* Gradient gold headline with a slow shimmer sweep. */
+  .text-gradient-gold {
+    background-image: linear-gradient(
+      100deg,
+      #FFE9A8 0%,
+      #F0B90B 30%,
+      #FFF3C4 50%,
+      #F0B90B 70%,
+      #FFE9A8 100%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 6s linear infinite;
+  }
+  /* Faint blueprint grid layer for the hero backdrop. */
+  .hero-grid {
+    background-image:
+      linear-gradient(to right, rgba(38, 48, 67, 0.5) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(38, 48, 67, 0.5) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 40%, transparent 100%);
+  }
+  /* Soft colored light blob (aurora). Positioned by utilities at call site. */
+  .aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(60px);
+    will-change: transform, opacity;
+    animation: aurora 14s ease-in-out infinite;
+  }
+  /* Glow frame around the featured hero card. */
+  .glow-frame {
+    box-shadow: 0 0 0 1px rgba(240,185,11,0.30),
+      0 24px 80px -20px rgba(240,185,11,0.35),
+      0 8px 40px -12px rgba(0,0,0,0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .text-gradient-gold,
+  .aurora-blob,
+  .stagger > *,
+  .animate-float,
+  .animate-aurora,
+  .animate-pulse-glow,
+  .animate-shimmer {
+    animation: none !important;
+  }
 }

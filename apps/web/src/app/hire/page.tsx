@@ -598,7 +598,7 @@ function HireWizard() {
                   </TrustNote>
                   {liveHire && (
                     <p className="caption">
-                      Execution depends on the agent's own endpoints; your session terms
+                      Execution depends on the agent&apos;s own endpoints; your session terms
                       are enforced by your wallet session keys.
                     </p>
                   )}

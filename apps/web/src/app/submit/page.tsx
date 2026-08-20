@@ -111,7 +111,7 @@ export default function SubmitPage() {
             </Link>
           </div>
           <p className="caption">
-            It stays listed in this browser's market. The registry itself is immutable —
+            It stays listed in this browser&apos;s market. The registry itself is immutable —
             this is a local directory entry, not a new on-chain registration.
           </p>
         </Panel>
