@@ -1,11 +1,20 @@
 // ScanAgentCard — one entry from the LIVE directory. Only real indexer fields
 // are rendered; no success-rate / job-count inventions. Null or zero metrics
 // render as an honest "fresh agent" line instead of fabricated numbers.
+"use client";
 import Link from "next/link";
-import { Activity, Check, ExternalLink, MessageSquare, Star } from "lucide-react";
+import {
+  Activity,
+  Check,
+  ExternalLink,
+  GitCompare,
+  MessageSquare,
+  Star,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import type { LiveAgentView } from "@/lib/scan-normalize";
 import { CATEGORY_META } from "@/lib/categories";
+import { useCompare } from "@/lib/compare-store";
 
 function Metric({
   label,
@@ -38,7 +47,16 @@ function Metric({
   );
 }
 
-export default function ScanAgentCard({ view }: { view: LiveAgentView }) {
+export default function ScanAgentCard({
+  view,
+  selectable = false,
+}: {
+  view: LiveAgentView;
+  selectable?: boolean;
+}) {
+  const { toggle, has, isFull } = useCompare();
+  const selected = has(view.slug);
+  const disabled = !selected && isFull();
   const fromIndexer = view.source === "indexer";
   const score = fromIndexer ? view.totalScore : null;
   const feedbacks = fromIndexer ? view.totalFeedbacks : null;
@@ -48,7 +66,7 @@ export default function ScanAgentCard({ view }: { view: LiveAgentView }) {
   return (
     <Link
       href={`/agents/${view.slug}`}
-      className="group flex flex-col gap-3 rounded-btn border border-border bg-surface-2/40 p-4 transition-colors hover:border-primary/40"
+      className="group relative flex flex-col gap-3 rounded-btn border border-border bg-surface-2/40 p-4 transition-colors hover:border-primary/40"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -144,7 +162,36 @@ export default function ScanAgentCard({ view }: { view: LiveAgentView }) {
         <span className="inline-flex items-center gap-1 text-[12px] text-primary">
           Details <ExternalLink size={12} />
         </span>
-        <span className="caption">View on 8004scan ↗</span>
+        {selectable ? (
+          <button
+            type="button"
+            aria-pressed={selected}
+            title={
+              disabled
+                ? "Compare is full (max 3) — remove one first"
+                : selected
+                  ? "Remove from compare"
+                  : "Add to compare"
+            }
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              if (!disabled) toggle(view);
+            }}
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+              selected
+                ? "border-primary/50 bg-primary/15 text-primary"
+                : disabled
+                  ? "cursor-not-allowed border-border bg-surface-2/60 text-muted/50"
+                  : "border-border bg-surface-2/60 text-muted hover:text-text"
+            }`}
+          >
+            <GitCompare size={11} />
+            {selected ? "Added" : "Compare"}
+          </button>
+        ) : (
+          <span className="caption">View on 8004scan ↗</span>
+        )}
       </div>
     </Link>
   );

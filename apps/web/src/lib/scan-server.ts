@@ -168,3 +168,60 @@ export async function listAgents({
     return { agents: [], total: 0, degraded: true, fetchedAt: new Date().toISOString() };
   }
 }
+
+export interface BrowseResult extends DirectoryResult {
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+/**
+ * Browse a specific PAGE of the 8004scan directory (powers "Load more" and the
+ * paginated A2A route /api/directory). Unlike listAgents this is page-aware and
+ * NOT cached (each page is distinct). NEVER throws: on failure returns
+ * { agents: [], degraded: true, hasMore: false }. Note the public API's
+ * anonymous rate limit (~10 req/min) — callers should page on demand, not eagerly.
+ */
+export async function browseAgents({
+  chainId = 56,
+  page = 1,
+  limit = 24,
+}: { chainId?: number; page?: number; limit?: number } = {}): Promise<BrowseResult> {
+  if (process.env.SCAN_FORCE_FAIL === "1") {
+    return {
+      agents: [], total: 0, degraded: true, fetchedAt: new Date().toISOString(),
+      page, limit, hasMore: false,
+    };
+  }
+  const clamped = Math.min(Math.max(1, Math.floor(limit)), 100);
+  const pg = Math.max(1, Math.floor(page));
+  try {
+    const env = (await scanHttpGet(
+      `${BASE_URL}/agents?chainId=${chainId}&limit=${clamped}&page=${pg}`
+    )) as {
+      success?: boolean;
+      data?: unknown;
+      meta?: { pagination?: { total?: number; hasMore?: boolean } };
+    };
+    const data = Array.isArray(env?.data) ? (env.data as Record<string, unknown>[]) : [];
+    const total = Number(env?.meta?.pagination?.total ?? data.length);
+    const hasMore =
+      typeof env?.meta?.pagination?.hasMore === "boolean"
+        ? env.meta.pagination.hasMore
+        : pg * clamped < total;
+    return {
+      agents: data,
+      total: Number.isFinite(total) ? total : data.length,
+      degraded: false,
+      fetchedAt: new Date().toISOString(),
+      page: pg,
+      limit: clamped,
+      hasMore,
+    };
+  } catch {
+    return {
+      agents: [], total: 0, degraded: true, fetchedAt: new Date().toISOString(),
+      page: pg, limit: clamped, hasMore: false,
+    };
+  }
+}
