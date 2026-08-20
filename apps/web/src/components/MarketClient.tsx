@@ -11,11 +11,13 @@ import { EmptyState } from "@/components/ui";
 import { useMarket } from "@/lib/store";
 import { timeAgo } from "@/lib/format";
 import { viewFromSubmission } from "@/lib/scan-normalize";
+import { CATEGORY_META, CORE_CATEGORIES, type AgentCategory } from "@/lib/categories";
 import type { DirectorySource } from "@/lib/directory-cache";
 import type { LiveAgentView } from "@/lib/scan-normalize";
 
 type Filter = "all" | "x402" | "verified";
 type SortKey = "score" | "feedbacks" | "fresh";
+type CatFilter = AgentCategory | "all";
 
 export default function MarketClient({
   live,
@@ -25,6 +27,7 @@ export default function MarketClient({
   source,
   fetchedAt,
   note,
+  initialCategory,
 }: {
   live: LiveAgentView[];
   total: number;
@@ -33,20 +36,31 @@ export default function MarketClient({
   source: DirectorySource;
   fetchedAt?: string;
   note?: string;
+  initialCategory?: CatFilter;
 }) {
   const { submittedAgents } = useMarket();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<SortKey>("feedbacks");
+  const [cat, setCat] = useState<CatFilter>(initialCategory ?? "all");
 
   const views = useMemo<LiveAgentView[]>(
     () => [...live, ...submittedAgents.map(viewFromSubmission)],
     [live, submittedAgents]
   );
 
+  // Per-category counts across the whole directory (independent of the active
+  // category selection) so the nav chips always show the real distribution.
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: views.length };
+    for (const v of views) c[v.category] = (c[v.category] ?? 0) + 1;
+    return c;
+  }, [views]);
+
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = views.filter((v) => {
+      if (cat !== "all" && v.category !== cat) return false;
       if (filter === "x402" && !v.x402Supported) return false;
       if (filter === "verified" && !v.verified && v.source !== "submission") return false;
       if (
@@ -62,7 +76,14 @@ export default function MarketClient({
     if (sort === "feedbacks") list = [...list].sort((a, b) => b.totalFeedbacks - a.totalFeedbacks);
     if (sort === "fresh") list = [...list].sort((a, b) => a.totalFeedbacks - b.totalFeedbacks);
     return list;
-  }, [views, query, filter, sort]);
+  }, [views, query, filter, sort, cat]);
+
+  // Category nav: All + the four core categories, plus Other only when present.
+  const catChips: { key: CatFilter; label: string }[] = [
+    { key: "all", label: "All" },
+    ...CORE_CATEGORIES.map((c) => ({ key: c as CatFilter, label: CATEGORY_META[c].short })),
+    ...(counts["other"] ? [{ key: "other" as CatFilter, label: CATEGORY_META.other.short }] : []),
+  ];
 
   const filters: { key: Filter; label: string }[] = [
     { key: "all", label: "All" },
@@ -119,6 +140,32 @@ export default function MarketClient({
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
+
+        {/* Category navigation — the four first-class BNB Agent Studio categories. */}
+        <div className="flex flex-wrap items-center gap-2">
+          {catChips.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setCat(c.key)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                cat === c.key
+                  ? "bg-primary/15 text-primary"
+                  : "border border-border bg-surface-2/40 text-muted hover:text-text"
+              }`}
+            >
+              {c.label}
+              <span className="tnum text-[11px] opacity-70">{counts[c.key] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+        {cat !== "all" && (
+          <p className="caption -mt-1">
+            {CATEGORY_META[cat].description}{" "}
+            <span className="text-muted/70">
+              · category inferred from agent metadata, not an on-chain field.
+            </span>
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           {filters.map((f) => (
             <button

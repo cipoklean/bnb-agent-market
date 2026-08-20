@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Activity, Check, ExternalLink, MessageSquare, Star } from "lucide-react";
 import type { ReactNode } from "react";
 import type { LiveAgentView } from "@/lib/scan-normalize";
+import { CATEGORY_META } from "@/lib/categories";
 
 function Metric({
   label,
@@ -72,6 +73,19 @@ export default function ScanAgentCard({ view }: { view: LiveAgentView }) {
       )}
 
       <div className="flex flex-wrap items-center gap-1.5">
+        {view.category !== "other" && (
+          <span
+            className="badge-gold"
+            title={
+              view.categoryInferred
+                ? "Category inferred from the agent's on-chain metadata (name/description)"
+                : "Category declared by the agent owner"
+            }
+          >
+            {CATEGORY_META[view.category].short}
+            {view.categoryInferred && <span className="opacity-60">~</span>}
+          </span>
+        )}
         {fromIndexer && view.verified && (
           <span className="badge-green">
             <Check size={12} /> Verified

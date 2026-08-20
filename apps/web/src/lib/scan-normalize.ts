@@ -3,6 +3,7 @@
 // No node imports and NO app-data imports: safe in both the server and
 // browser bundles, and directly importable by node tests via strip-types.
 import type { Agent, Capability, Erc8004ScanMetrics } from "./types";
+import { classifyAgent, type AgentCategory } from "./categories";
 
 export interface LiveAgentView {
   slug: string; // scan-{chainId}-{tokenId} (or submitted-* for local submissions)
@@ -21,6 +22,10 @@ export interface LiveAgentView {
   verified: boolean; // indexer is_verified flag (publisher verification)
   imageUrl: string | null;
   source: "indexer" | "submission";
+  /** One of the four core categories (or "other"). See lib/categories.ts. */
+  category: AgentCategory;
+  /** true = inferred from metadata; false = self-declared at submission. */
+  categoryInferred: boolean;
 }
 
 const numOrNull = (v: unknown): number | null => (typeof v === "number" ? v : null);
@@ -50,14 +55,17 @@ export function isLiveSourced(id: string): boolean {
 export function normalizeScanEntry(raw: Record<string, unknown>, chainId: number): LiveAgentView {
   const tokenId = String(raw.token_id ?? "").trim();
   const registry = strOr(raw.contract_address);
+  const name = strOr(raw.name).trim() || `Agent #${tokenId}`;
+  const description = strOr(raw.description);
+  const cls = classifyAgent({ name, description });
   return {
     slug: scanSlugFor(chainId, tokenId),
     chainId,
     tokenId,
     canonicalId: `${chainId}:${registry}:${tokenId}`,
     registry,
-    name: strOr(raw.name).trim() || `Agent #${tokenId}`,
-    description: strOr(raw.description),
+    name,
+    description,
     owner: strOr(raw.owner_address),
     totalScore: numOrNull(raw.total_score),
     averageScore: numOrNull(raw.average_score),
@@ -67,6 +75,8 @@ export function normalizeScanEntry(raw: Record<string, unknown>, chainId: number
     verified: raw.is_verified === true,
     imageUrl: strOr(raw.image_url).trim() || null,
     source: "indexer",
+    category: cls.category,
+    categoryInferred: cls.inferred,
   };
 }
 
@@ -74,6 +84,11 @@ export function normalizeScanEntry(raw: Record<string, unknown>, chainId: number
 export function viewFromSubmission(sub: Agent): LiveAgentView {
   const parsed = parseCanonicalId(sub.agentId8004) ?? { chainId: "", tokenId: "" };
   const chainId = Number(parsed.chainId || 56);
+  const cls = classifyAgent({
+    name: sub.name,
+    description: sub.tagline,
+    declaredCategory: sub.category,
+  });
   return {
     slug: sub.id,
     chainId,
@@ -91,6 +106,8 @@ export function viewFromSubmission(sub: Agent): LiveAgentView {
     verified: false,
     imageUrl: null,
     source: "submission",
+    category: cls.category,
+    categoryInferred: cls.inferred,
   };
 }
 
