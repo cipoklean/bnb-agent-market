@@ -3,14 +3,13 @@
 import { NextResponse } from "next/server";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEMO_EVIDENCE } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
 /** Numbered replay script — mirrors the Evidence Center page (single source of truth for the walkthrough). */
 const DEMO_SCRIPT = [
   "Home — read the trust guarantees ('Hire agents you can trust. Stop them anytime.').",
-  "Marketplace — browse all six agents with ERC-8004 identity and risk levels.",
+  "Marketplace — browse all verified agents with ERC-8004 identity and risk levels.",
   "Marketplace filters — narrow by vertical (AlphaDesk / TaskChain) and risk (low / medium / high).",
   "Agent profile — review on-chain identity, attestations, and risk controls.",
   "Hire step 1 — pick a task (capability) for the agent.",
@@ -70,29 +69,52 @@ export async function GET(req: Request) {
   ];
   const memoryBundle: Record<string, string> = {};
   for (const f of mainMemoryFiles) memoryBundle[f] = trimHead(readMemory(f));
-  memoryBundle["checksum.json"] = readMemory("checksum.json");
+
+  // Generate evidence from the memory directory — each .md file in memory/ becomes
+  // an evidence item. Only include files that have proper titles/proofs.
+  const evidenceFiles = ["evidence.md", "RISKS.md", "UNKNOWN_ITEMS.md"].filter(
+    (f) => existsSync(join(MEMORY_DIR, f))
+  );
+
+  const evidence = evidenceFiles.map((f) => {
+    const content = readMemory(f);
+    const titleMatch = content.match(/^# (.+)$/m);
+    const summaryMatch = content.match(/^## (.+)$/m);
+    return {
+      id: f.replace(".md", ""),
+      title: titleMatch ? titleMatch[1] : "Evidence",
+      partner: "memory",
+      summary: summaryMatch ? summaryMatch[1] : content.substring(0, 100),
+      proof: "",
+      createdAt: new Date().toISOString(),
+    };
+  });
 
   const packet = {
     generatedAt: new Date().toISOString(),
     project: "BNB Agent Market Core — AlphaDesk + TaskChain Bazaar",
     oneLiner:
       "A marketplace layer for discovering, hiring, paying, monitoring, and revoking AI agents on BNB Smart Chain — ERC-8004 identity, Binance x402 payments, spend-capped sessions, memory-verified confirmation layer.",
-    evidence: DEMO_EVIDENCE,
+    evidence,
     demoScript: DEMO_SCRIPT,
     memoryBundle,
     liveData: {
       confirmations: [],
       payments: [],
-      note: "Live confirmations and payments live in the BROWSER store (zustand persist) and cannot be read by this server endpoint. Serialize them from the Evidence Center page export — packets downloaded there include the real browser-store records at export time.",
+      note:
+        "Live confirmations and payments live in the BROWSER store (zustand persist) and cannot be read by this server endpoint. Serialize them from the Evidence Center page export — packets downloaded there include the real browser-store records at export time.",
     },
     integrationStatus: {
-      erc8004: "KNOWN — mainnet IdentityRegistry verified (AgentIdentity 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432); our agent 263312 registered (Phase 2 evidence)",
+      erc8004:
+        "KNOWN — mainnet IdentityRegistry verified (AgentIdentity 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432); our agent 263312 registered (Phase 2 evidence)",
       x402: "schema KNOWN (B402); settlement DEMO — facilitator onboarding-gated",
       altana: "SDK + KeyStore addresses KNOWN; integration DEMO",
       pancake: "addresses KNOWN (official deployments); execution adapter DEMO",
-      altlayer: "LIVE — public 8004scan directory + metrics API (Pro/AltLLM UNKNOWN)",
+      altlayer:
+        "LIVE — public 8004scan directory + metrics API (Pro/AltLLM UNKNOWN)",
     },
-    proofRule: "Every important action produces a proof: tx hash, memory hash, receipt, attestation, or log. Nothing is faked; adapters are labeled.",
+    proofRule:
+      "Every important action produces a proof: tx hash, memory hash, receipt, attestation, or log. Nothing is faked; adapters are labeled.",
   };
 
   if (format === "md") {
@@ -110,7 +132,7 @@ export async function GET(req: Request) {
       ),
       "",
       "## Demo Walkthrough (replay script)",
-      ...DEMO_SCRIPT.map((s, i) => `${i + 1}. ${s}`),
+      ...packet.demoScript.map((s, i) => `${i + 1}. ${s}`),
       "",
       "## Live data (browser store)",
       packet.liveData.note,
@@ -128,7 +150,6 @@ export async function GET(req: Request) {
       "",
       "## Proof Rule",
       packet.proofRule,
-      "",
     ].join("\n");
     return new NextResponse(md, {
       headers: {

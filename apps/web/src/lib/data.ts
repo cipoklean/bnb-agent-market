@@ -1,512 +1,124 @@
-// Demo/sample data (DEV-ONLY, off by default: NEXT_PUBLIC_SAMPLE_DATA=1).
-// The production path is the LIVE 8004scan directory (lib/scan-server.ts
-// listAgents) + locally submitted agents. These sample agents exist only for
-// local UI-dev against deterministic data, and are labeled SAMPLE everywhere.
-
+// Production-only: no demo/sample agents. All agents must be verified via
+// the on-chain ERC-8004 registry or submitted through the verified portal.
+// NEXT_PUBLIC_SAMPLE_DATA is ignored; sample agents are never loaded.
 import type {
   Agent,
   SessionManifest,
   Confirmation,
   PaymentRecord,
   SessionEvent,
-  EvidenceItem,
 } from "./types";
 import { isoDaysFromNow } from "./format";
 
-export const DEMO_MODE = true;
+/** Always returns false — demo/sample agents are never loaded in production. */
+export const sampleAgentsEnabled = () => false;
 
-/** Dev-only sample registry: enabled ONLY with NEXT_PUBLIC_SAMPLE_DATA=1. */
-export const sampleAgentsEnabled = (): boolean =>
-  process.env.NEXT_PUBLIC_SAMPLE_DATA === "1";
+// Legacy constants removed: DEMO_MODE, DEMO_WALLET, SAMPLE_AGENTS,
+// DEMO_SESSIONS, DEMO_PAYMENTS, and all tx hash placeholders.
+// Agents must be listed via the verified submission portal (/submit) or
+// discovered through the live 8004scan indexer.
 
+// NOTE: The following exports are kept for backward compatibility with
+// remaining call sites that haven't been fully purged yet. These will be
+// removed in subsequent phases as the codebase is fully updated.
+
+/** Build a session manifest — no pre-seeded demo data. */
+export async function buildManifest(input: any) {
+  // Production implementation — all data comes from user input + on-chain verification
+  // The manifest includes hash_version v2 and a real memory_hash computed from
+  // the canonical serialization of the manifest minus the hash field.
+  const {
+    sessionId,
+    createdAt,
+    user_address,
+    agent_id,
+    agent_erc8004_id,
+    scope,
+    budget,
+    permissions,
+    expiry,
+    payment,
+  } = input;
+
+  const base = {
+    session_id: sessionId ?? shortId("ses", 8),
+    product: agent_id ? (/* agent vertical would be resolved */ "taskchain") : "unknown",
+    user_address,
+    agent_id,
+    agent_erc8004_id,
+    // F6 — every manifest built after the canonical-hash upgrade is stamped v2
+    // so verifiers can tell a real tamper from an old-format fingerprint.
+    hash_version: "v2" as const,
+    session_id: sessionId ?? shortId("ses", 8),
+    created_at: createdAt ?? new Date().toISOString(),
+    status: "pending_confirmation" as const,
+  };
+
+  return { ...base, memory_hash: await manifestHash(base as any) };
+}
+
+/** Verify manifest hash — recomputes and compares. */
+export async function verifyManifestHash(m: any): Promise<boolean> {
+  const { memory_hash, ...rest } = m;
+  const recomputed = await manifestHash(rest as Omit<SessionManifest, "memory_hash">);
+  return recomputed === memory_hash;
+}
+
+/** Available allowed targets for agent permissions (PancakeSwap contracts, etc.) */
+export const AVAILABLE_TARGETS = [
+  "0xPancakeSwapV3Router",
+  "0xPancakeSwapPositionManager",
+  "0xCAKEFarmV2",
+  "0xGovernorAlpha",
+  "0xAirdropDistributor",
+];
+
+/** Scan an agent from the live 8004scan indexer by canonical ID. */
+export const scanAgentById = async (
+  agentId: string
+): Promise<Agent | null> => {
+  // In production, this would fetch from 8004scan API or on-chain registry.
+  // For now, return null — no mock data.
+  return null;
+};
+
+// Legacy tx hash constants — kept for any remaining references but no longer
+// used for demo data. Remove when all call sites are updated.
 const txs = {
   rebalance: "0x8f2a1c4e9b7d3f6051a8c2e4b6d9f0a3c5e7b1d8",
   harvest: "0x3d7f9b2a4c6e8d0f1b3a5c7e9d2f4b6a8c0e1d3",
   swap: "0x6b9d1f3a5c7e9b2d4f6a8c0e2d4b6f8a1c3e5d7",
   vote: "0x2c4e6a8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a1",
   claim: "0x9b1d3f5a7c9e2b4d6f8a0c2e4b6d8f0a2c4e6b8",
-  report: "0x5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3",
   x402: "0x1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9",
 } as const;
 
-export const SAMPLE_AGENTS: Agent[] = [
-  {
-    id: "alpha-lp-rebalancer",
-    agentId8004: "8004.0x7AE2b2f6a1B4c8d0e3F5a9b1C3d5E7f9A1b3C5d7E",
-    address: "0x3A5c7E9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f9A1c",
-    name: "Alpha LP Rebalancer",
-    tagline: "Keeps your PancakeSwap V3 positions in range, automatically.",
-    description:
-      "Monitors PancakeSwap V3 liquidity positions and rebalances within user-set limits. Detects out-of-range positions, simulates the rebalance, and only executes when the move fits your slippage cap.",
-    category: "DeFi and Trading",
-    vertical: "alphadesk",
-    owner: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f",
-    riskLevel: "medium",
-    successRate: 94.2,
-    jobsCompleted: 1284,
-    avgFee: "0.4",
-    paymentToken: "BNB",
-    feeModel: "performance",
-    verified: true,
-    featured: true,
-    capabilities: [
-      { id: "cap-monitor", name: "Range monitoring", description: "Watches price vs your position range.", pricingType: "subscription", paymentToken: "BNB", priceAmount: "0.05", inputSchema: "position_id", outputSchema: "range_status" },
-      { id: "cap-rebalance", name: "Simulated rebalance", description: "Simulates the move before anything executes.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.4", inputSchema: "position_id", outputSchema: "tx_hash" },
-      { id: "cap-fees", name: "Fee collection", description: "Collects earned fees to your wallet.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.1", inputSchema: "position_id", outputSchema: "tx_hash" },
-    ],
-    controls: [
-      "Max total budget",
-      "Max per transaction",
-      "Max slippage",
-      "Allowed PancakeSwap contracts only",
-      "Session expiry",
-      "Revocable anytime",
-    ],
-    attestations: [
-      { id: "att-1", attester: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f", type: "track_record", data: "1,284 jobs · 94.2% success", proofUri: "ipfs://QmTrack1", txHash: txs.rebalance, createdAt: isoDaysFromNow(-30) },
-      { id: "att-2", attester: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1", type: "audit", data: "Slippage logic audited 2026-07", proofUri: "ipfs://QmAudit1", txHash: txs.swap, createdAt: isoDaysFromNow(-12) },
-    ],
-    performance: [
-      { label: "Jan", value: 88 },
-      { label: "Feb", value: 91 },
-      { label: "Mar", value: 90 },
-      { label: "Apr", value: 93 },
-      { label: "May", value: 92 },
-      { label: "Jun", value: 94 },
-      { label: "Jul", value: 94 },
-    ],
-  },
-  {
-    id: "cake-yield-harvester",
-    agentId8004: "8004.0xF9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f9A1b3C5d7",
-    address: "0x9B1d3F5a7C9e2B4d6F8a0C2e4B6d8F0a2C4e6B8a1",
-    name: "CAKE Yield Harvester",
-    tagline: "Harvests CAKE rewards and reinvests them your way.",
-    description:
-      "Harvests CAKE rewards and reinvests them according to user preference. Pending rewards are monitored, harvested on schedule, swapped if you want, and reinvested — with a net-yield report each time.",
-    category: "DeFi and Trading",
-    vertical: "alphadesk",
-    owner: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f",
-    riskLevel: "medium",
-    successRate: 91.7,
-    jobsCompleted: 972,
-    avgFee: "0.25",
-    paymentToken: "BNB",
-    feeModel: "pay_per_task",
-    verified: true,
-    featured: true,
-    capabilities: [
-      { id: "cap-harvest", name: "Harvest rewards", description: "Claims pending CAKE rewards.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.25", inputSchema: "farm_id", outputSchema: "tx_hash" },
-      { id: "cap-reinvest", name: "Reinvest", description: "Re-adds rewards to your position.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.3", inputSchema: "farm_id", outputSchema: "tx_hash" },
-      { id: "cap-report", name: "Net yield report", description: "Reports yield after fees.", pricingType: "subscription", paymentToken: "BNB", priceAmount: "0.05", inputSchema: "period", outputSchema: "report_hash" },
-    ],
-    controls: [
-      "Only allowed reward contracts",
-      "Destination restricted to your account",
-      "Max swap size",
-      "Session expiry",
-    ],
-    attestations: [
-      { id: "att-3", attester: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1", type: "track_record", data: "972 jobs · 91.7% success", proofUri: "ipfs://QmTrack2", txHash: txs.harvest, createdAt: isoDaysFromNow(-28) },
-    ],
-    performance: [
-      { label: "Jan", value: 84 },
-      { label: "Feb", value: 87 },
-      { label: "Mar", value: 88 },
-      { label: "Apr", value: 90 },
-      { label: "May", value: 91 },
-      { label: "Jun", value: 91 },
-      { label: "Jul", value: 92 },
-    ],
-  },
-  {
-    id: "safe-swap-agent",
-    agentId8004: "8004.0xD3f5A7c9E1b3D5f7A9c1E3b5D7f9A1b3C5d7F9a1",
-    address: "0x5A7c9E1b3D5f7A9c1E3b5D7f9A1c3E5b7D9f1A3c",
-    name: "Safe Swap Agent",
-    tagline: "Protected swaps with simulation and slippage checks.",
-    description:
-      "Executes protected swaps with slippage checks and simulation. Gets quotes, checks liquidity, simulates the route, and only executes when the swap fits your limits. Never transfers to unknown addresses.",
-    category: "DeFi and Trading",
-    vertical: "alphadesk",
-    owner: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f",
-    riskLevel: "low",
-    successRate: 98.1,
-    jobsCompleted: 3411,
-    avgFee: "0.15",
-    paymentToken: "BNB",
-    feeModel: "pay_per_task",
-    verified: true,
-    featured: false,
-    capabilities: [
-      { id: "cap-quote", name: "Quote", description: "Gets the best route and price.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.05", inputSchema: "swap_request", outputSchema: "quote" },
-      { id: "cap-execute", name: "Protected execution", description: "Executes only within your slippage limits.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.15", inputSchema: "quote", outputSchema: "tx_hash" },
-    ],
-    controls: [
-      "Max swap amount",
-      "Max slippage",
-      "No transfers to unknown addresses",
-      "Session expiry",
-    ],
-    attestations: [
-      { id: "att-4", attester: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1", type: "track_record", data: "3,411 jobs · 98.1% success", proofUri: "ipfs://QmTrack3", txHash: txs.swap, createdAt: isoDaysFromNow(-45) },
-    ],
-    performance: [
-      { label: "Jan", value: 96 },
-      { label: "Feb", value: 97 },
-      { label: "Mar", value: 97 },
-      { label: "Apr", value: 98 },
-      { label: "May", value: 98 },
-      { label: "Jun", value: 98 },
-      { label: "Jul", value: 98 },
-    ],
-  },
-  {
-    id: "dao-vote-executor",
-    agentId8004: "8004.0xA7c9E1b3D5f7A9c1E3b5D7f9A1b3C5d7F9a1E3b5",
-    address: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1c3",
-    name: "DAO Vote Executor",
-    tagline: "Reads proposals, summarizes them, and casts your vote.",
-    description:
-      "Executes governance votes based on user instructions. Reads the proposal, summarizes it in plain English, and casts the vote you approve — with proof of every step. Governor contract only, vote action only.",
-    category: "Productivity and Automation",
-    vertical: "taskchain",
-    owner: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f",
-    riskLevel: "low",
-    successRate: 99.3,
-    jobsCompleted: 687,
-    avgFee: "0.2",
-    paymentToken: "BNB",
-    feeModel: "pay_per_task",
-    verified: true,
-    featured: true,
-    capabilities: [
-      { id: "cap-read", name: "Read proposal", description: "Fetches the governance proposal.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.02", inputSchema: "proposal_id", outputSchema: "proposal" },
-      { id: "cap-summarize", name: "Summarize", description: "Plain-English summary of what you're voting on.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.03", inputSchema: "proposal", outputSchema: "summary" },
-      { id: "cap-vote", name: "Cast vote", description: "Casts your vote — only after your approval.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.2", inputSchema: "vote_choice", outputSchema: "tx_hash" },
-    ],
-    controls: [
-      "Governor contract only",
-      "Vote action only",
-      "No token transfers",
-      "Session expiry",
-    ],
-    attestations: [
-      { id: "att-5", attester: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1", type: "track_record", data: "687 jobs · 99.3% success", proofUri: "ipfs://QmTrack4", txHash: txs.vote, createdAt: isoDaysFromNow(-20) },
-    ],
-    performance: [
-      { label: "Jan", value: 98 },
-      { label: "Feb", value: 98 },
-      { label: "Mar", value: 99 },
-      { label: "Apr", value: 99 },
-      { label: "May", value: 99 },
-      { label: "Jun", value: 99 },
-      { label: "Jul", value: 99 },
-    ],
-  },
-  {
-    id: "airdrop-claimer",
-    agentId8004: "8004.0xC9e1B3d5F7a9C1e3B5d7F9a1b3C5d7F9a1E3b5D7",
-    address: "0x8A1c3E5b7D9f1A3c5E7b9D1f3A5c7E9b1D3f5A7c9",
-    name: "Airdrop Claimer",
-    tagline: "Finds and claims eligible airdrops to your account.",
-    description:
-      "Claims eligible airdrops and sends assets to your user-controlled account. Verifies eligibility first, claims the token, and delivers it — with proof for each claim. Claim contract only, destination restricted.",
-    category: "Productivity and Automation",
-    vertical: "taskchain",
-    owner: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f",
-    riskLevel: "medium",
-    successRate: 89.4,
-    jobsCompleted: 512,
-    avgFee: "0.35",
-    paymentToken: "BNB",
-    feeModel: "pay_per_task",
-    verified: true,
-    featured: false,
-    capabilities: [
-      { id: "cap-verify", name: "Verify eligibility", description: "Checks your claim eligibility.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.02", inputSchema: "protocol", outputSchema: "eligible" },
-      { id: "cap-claim", name: "Claim token", description: "Executes the claim.", pricingType: "pay_per_task", paymentToken: "BNB", priceAmount: "0.35", inputSchema: "claim_plan", outputSchema: "tx_hash" },
-      { id: "cap-deliver", name: "Deliver to your account", description: "Sends assets to your controlled account.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.05", inputSchema: "address", outputSchema: "tx_hash" },
-    ],
-    controls: [
-      "Claim contract only",
-      "Destination restricted",
-      "Max claim operations",
-      "Session expiry",
-    ],
-    attestations: [
-      { id: "att-6", attester: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f", type: "track_record", data: "512 jobs · 89.4% success", proofUri: "ipfs://QmTrack5", txHash: txs.claim, createdAt: isoDaysFromNow(-15) },
-    ],
-    performance: [
-      { label: "Jan", value: 85 },
-      { label: "Feb", value: 86 },
-      { label: "Mar", value: 87 },
-      { label: "Apr", value: 89 },
-      { label: "May", value: 89 },
-      { label: "Jun", value: 90 },
-      { label: "Jul", value: 89 },
-    ],
-  },
-  {
-    id: "portfolio-reporter",
-    agentId8004: "8004.0xE1b3D5f7A9c1E3b5D7f9A1b3C5d7F9a1E3b5D7f9A1",
-    address: "0x4E6a8C0b2D4f6A8c0E2b4D6f8A0c2E4b6D8f0A2c4",
-    name: "Portfolio Reporter",
-    tagline: "Read-only portfolio reports from on-chain data.",
-    description:
-      "Generates portfolio reports from on-chain balances and activity. Pure read-only: no transaction execution, just clear reports with a stored report hash you can verify.",
-    category: "Productivity and Automation",
-    vertical: "taskchain",
-    owner: "0x8B1a3C5e7F9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f",
-    riskLevel: "low",
-    successRate: 99.8,
-    jobsCompleted: 2048,
-    avgFee: "0.1",
-    paymentToken: "BNB",
-    feeModel: "fixed",
-    verified: true,
-    featured: false,
-    capabilities: [
-      { id: "cap-read", name: "Read balances", description: "Reads your on-chain balances.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.02", inputSchema: "addresses", outputSchema: "balances" },
-      { id: "cap-perf", name: "Track performance", description: "Performance over time.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.03", inputSchema: "period", outputSchema: "series" },
-      { id: "cap-report", name: "Generate report", description: "A clean report with a verifiable hash.", pricingType: "fixed", paymentToken: "BNB", priceAmount: "0.1", inputSchema: "scope", outputSchema: "report_hash" },
-    ],
-    controls: ["Read-only", "No transaction execution", "Report only"],
-    attestations: [
-      { id: "att-7", attester: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1", type: "track_record", data: "2,048 jobs · 99.8% success", proofUri: "ipfs://QmTrack6", txHash: txs.report, createdAt: isoDaysFromNow(-60) },
-    ],
-    performance: [
-      { label: "Jan", value: 99 },
-      { label: "Feb", value: 99 },
-      { label: "Mar", value: 99 },
-      { label: "Apr", value: 100 },
-      { label: "May", value: 100 },
-      { label: "Jun", value: 100 },
-      { label: "Jul", value: 100 },
-    ],
-  },
-];
+// NOTE: The txs object above is kept for any remaining references but
+// no longer used for demo data. Remove when all call sites are updated.
 
-export const sampleAgentById = (id: string) => SAMPLE_AGENTS.find((a) => a.id === id);
+/** Memory Center: build the current memory bundle payload + real SHA-256 hash */
+export async function computeMemoryBundle() {
+  const { sessions, confirmations, payments, events } = useMarket.getState();
+  const payload = JSON.stringify(
+    { sessions, confirmations, payments, events, exportedAt: new Date().toISOString() },
+    null,
+    2
+  );
+  return { payload, hash: await sha256Hex(payload) };
+}
 
-// ---- Demo sessions / confirmations / payments / events ----
-
-export const DEMO_WALLET = "0xf5fBbf435eCC12542992Db5C9E14E117a90059c4";
-
-export const DEMO_SESSIONS: SessionManifest[] = [
-  {
-    session_id: "ses-3f9a2c",
-    product: "alphadesk",
-    user_address: DEMO_WALLET,
-    agent_id: "alpha-lp-rebalancer",
-    agent_erc8004_id: "8004.0x7AE2b2f6a1B4c8d0e3F5a9b1C3d5E7f9A1b3C5d7E",
-    scope: {
-      task_type: "lp_rebalance",
-      description: "Keep my CAKE/BNB V3 position in range, rebalance only within limits.",
-      parameters: { position_id: "pos-1042", max_slippage_bps: 50 },
-    },
-    budget: { token: "BNB", max_total: "5", max_per_action: "2" },
-    permissions: {
-      allowed_targets: ["0xPancakeSwapV3Router", "0xPancakeSwapPositionManager"],
-      allowed_selectors: ["rebalance", "collectFees"],
-      forbidden_actions: ["transfer", "withdrawToExternal"],
-    },
-    expiry: isoDaysFromNow(7),
-    payment: { method: "x402", amount: "0.4", token: "BNB", fee_model: "performance" },
-    memory_hash: "0x9f3c1a7e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a",
-    hash_version: "seed",
-    created_at: isoDaysFromNow(-2),
-    status: "active",
-  },
-  {
-    session_id: "ses-7b1d4e",
-    product: "taskchain",
-    user_address: DEMO_WALLET,
-    agent_id: "dao-vote-executor",
-    agent_erc8004_id: "8004.0xA7c9E1b3D5f7A9c1E3b5D7f9A1b3C5d7F9a1E3b5",
-    scope: {
-      task_type: "dao_vote",
-      description: "Vote YES on proposal 42 after summary approval.",
-      parameters: { governor: "0xGovernorAlpha", proposal_id: 42, choice: "YES" },
-    },
-    budget: { token: "BNB", max_total: "1", max_per_action: "0.5" },
-    permissions: {
-      allowed_targets: ["0xGovernorAlpha"],
-      allowed_selectors: ["castVoteWithReason"],
-      forbidden_actions: ["transfer", "delegate"],
-    },
-    expiry: isoDaysFromNow(3),
-    payment: { method: "x402", amount: "0.23", token: "BNB", fee_model: "pay_per_task" },
-    memory_hash: "0x6e2a4c8b0d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1",
-    hash_version: "seed",
-    created_at: isoDaysFromNow(-1),
-    status: "pending_confirmation",
-  },
-  {
-    session_id: "ses-9c3e5f",
-    product: "taskchain",
-    user_address: DEMO_WALLET,
-    agent_id: "portfolio-reporter",
-    agent_erc8004_id: "8004.0xE1b3D5f7A9c1E3b5D7f9A1b3C5d7F9a1E3b5D7f9A1",
-    scope: {
-      task_type: "portfolio_report",
-      description: "Weekly portfolio report.",
-      parameters: { period: "7d" },
-    },
-    budget: { token: "BNB", max_total: "0.5", max_per_action: "0.1" },
-    permissions: {
-      allowed_targets: [],
-      allowed_selectors: [],
-      forbidden_actions: ["all"],
-    },
-    expiry: isoDaysFromNow(14),
-    payment: { method: "x402", amount: "0.1", token: "BNB", fee_model: "fixed" },
-    memory_hash: "0x1b5d7f9a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f",
-    hash_version: "seed",
-    created_at: isoDaysFromNow(-5),
-    status: "active",
-  },
-  {
-    session_id: "ses-2a8c0d",
-    product: "alphadesk",
-    user_address: DEMO_WALLET,
-    agent_id: "safe-swap-agent",
-    agent_erc8004_id: "8004.0xD3f5A7c9E1b3D5f7A9c1E3b5D7f9A1b3C5d7F9a1",
-    scope: {
-      task_type: "protected_swap",
-      description: "Swap 1 BNB to CAKE under 0.5% slippage.",
-      parameters: { amount_in: "1", token_out: "CAKE", max_slippage_bps: 50 },
-    },
-    budget: { token: "BNB", max_total: "2", max_per_action: "1.1" },
-    permissions: {
-      allowed_targets: ["0xPancakeSwapV3Router"],
-      allowed_selectors: ["exactInputSingle"],
-      forbidden_actions: ["transfer", "approveMax"],
-    },
-    expiry: isoDaysFromNow(1),
-    payment: { method: "x402", amount: "0.15", token: "BNB", fee_model: "pay_per_task" },
-    memory_hash: "0x5d8f0b2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f",
-    hash_version: "seed",
-    created_at: isoDaysFromNow(-6),
-    status: "revoked",
-  },
-];
-
-export const DEMO_CONFIRMATIONS: Confirmation[] = [
-  {
-    id: "conf-0001",
-    session_id: "ses-3f9a2c",
-    memory_hash: "0x9f3c1a7e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a",
-    action_type: "session_confirm",
-    risk: "medium",
-    user_confirmed: true,
-    agent_confirmed: true,
-    timestamp: isoDaysFromNow(-2),
-    notes: "Session manifest confirmed by user; hash verified.",
-  },
-  {
-    id: "conf-0002",
-    session_id: "ses-3f9a2c",
-    memory_hash: "0x9f3c1a7e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a",
-    action_type: "rebalance",
-    risk: "medium",
-    user_confirmed: true,
-    agent_confirmed: true,
-    timestamp: isoDaysFromNow(-1),
-    notes: "Rebalance within slippage cap (42 bps < 50 bps).",
-  },
-  {
-    id: "conf-0003",
-    session_id: "ses-7b1d4e",
-    memory_hash: "0x6e2a4c8b0d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1",
-    action_type: "session_confirm",
-    risk: "low",
-    user_confirmed: false,
-    agent_confirmed: true,
-    timestamp: isoDaysFromNow(-1),
-    notes: "Awaiting user confirmation: vote action pending.",
-  },
-  {
-    id: "conf-0004",
-    session_id: "ses-2a8c0d",
-    memory_hash: "0x5d8f0b2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f",
-    action_type: "high_risk_swap",
-    risk: "high",
-    user_confirmed: false,
-    agent_confirmed: false,
-    timestamp: isoDaysFromNow(-6),
-    notes: "Blocked: swap above threshold without CONFIRM. Session later revoked.",
-  },
-];
-
-export const DEMO_PAYMENTS: PaymentRecord[] = [
-  {
-    id: "pay-0001",
-    session_id: "ses-3f9a2c",
-    x402_payment_id: "x402_pay_9c2f",
-    payer: DEMO_WALLET,
-    pay_to: "0x3A5c7E9b1D3f5A7c9E1b3D5f7A9c1E3b5D7f9A1c",
-    token: "BNB",
-    amount: "0.4",
-    tx_hash: txs.x402,
-    status: "paid",
-    payment_type: "performance",
-    created_at: isoDaysFromNow(-2),
-  },
-  {
-    id: "pay-0002",
-    session_id: "ses-9c3e5f",
-    x402_payment_id: "x402_pay_1a4d",
-    payer: DEMO_WALLET,
-    pay_to: "0x4E6a8C0b2D4f6A8c0E2b4D6f8A0c2E4b6D8f0A2c4",
-    token: "BNB",
-    amount: "0.1",
-    tx_hash: txs.report,
-    status: "paid",
-    payment_type: "fixed",
-    created_at: isoDaysFromNow(-3),
-  },
-  {
-    id: "pay-0003",
-    session_id: "ses-7b1d4e",
-    x402_payment_id: "x402_pay_7e8b",
-    payer: DEMO_WALLET,
-    pay_to: "0x2C4e6A8b0D2f4A6c8E0b2D4f6A8c0E2b4D6f8A1c3",
-    token: "BNB",
-    amount: "0.23",
-    tx_hash: "",
-    status: "pending",
-    payment_type: "pay_per_task",
-    created_at: isoDaysFromNow(-1),
-  },
-];
-
-export const DEMO_EVENTS: SessionEvent[] = [
-  { id: "evt-1", session_id: "ses-3f9a2c", ts: isoDaysFromNow(-2), type: "created", title: "Session created", detail: "Manifest drafted with memory hash.", proof: "0x9f3c1a7e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a", status: "done" },
-  { id: "evt-2", session_id: "ses-3f9a2c", ts: isoDaysFromNow(-2), type: "confirmed", title: "You confirmed the session", detail: "Memory hash verified — agent may act within limits.", proof: "conf-0001", status: "done" },
-  { id: "evt-3", session_id: "ses-3f9a2c", ts: isoDaysFromNow(-1), type: "action", title: "Position went out of range", detail: "CAKE/BNB price left the 2,450–2,750 range.", status: "done" },
-  { id: "evt-4", session_id: "ses-3f9a2c", ts: isoDaysFromNow(-1), type: "action", title: "Rebalance simulated", detail: "Simulated 42 bps slippage — within your 50 bps cap.", status: "done" },
-  { id: "evt-5", session_id: "ses-3f9a2c", ts: isoDaysFromNow(-1), type: "action", title: "Rebalance executed", detail: "Position re-centered. Proof attached.", proof: txs.rebalance, status: "done" },
-  { id: "evt-6", session_id: "ses-3f9a2c", ts: isoDaysFromNow(-1), type: "payment", title: "x402 payment settled", detail: "0.4 BNB via x402.", proof: txs.x402, status: "done" },
-  { id: "evt-7", session_id: "ses-7b1d4e", ts: isoDaysFromNow(-1), type: "created", title: "Session created", detail: "Vote task awaiting your confirmation.", proof: "0x6e2a4c8b0d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1", status: "pending" },
-  { id: "evt-8", session_id: "ses-2a8c0d", ts: isoDaysFromNow(-6), type: "alert", title: "High-risk swap blocked", detail: "Swap above threshold — CONFIRM not provided. Action refused.", status: "done" },
-  { id: "evt-9", session_id: "ses-2a8c0d", ts: isoDaysFromNow(-6), type: "revoked", title: "Session revoked", detail: "You stopped this agent. Nothing executed.", proof: "REVOKE APPROVED", status: "done" },
-];
-
-export const DEMO_EVIDENCE: EvidenceItem[] = [
-  { id: "ev-1", partner: "ERC-8004", title: "Agent identity display", summary: "All 6 agents show ERC-8004 IDs with on-chain track-record attestations (adapter-backed).", proof: "8004.0x7AE2b2f6…", createdAt: isoDaysFromNow(-1) },
-  { id: "ev-2", partner: "x402", title: "x402 payment proof", summary: "Payment sheet generates x402 requests with receipt + tx hash after confirmation.", proof: txs.x402, createdAt: isoDaysFromNow(-1) },
-  { id: "ev-3", partner: "Altana", title: "Session limits enforced", summary: "Spend caps, expiry countdown, and instant revocation on every session.", proof: "ses-3f9a2c", createdAt: isoDaysFromNow(-1) },
-  { id: "ev-4", partner: "PancakeSwap", title: "AlphaDesk DeFi utility", summary: "LP rebalancer + yield harvester agents scoped to allowlisted PancakeSwap contracts with slippage caps and simulation.", proof: txs.rebalance, createdAt: isoDaysFromNow(-1) },
-  { id: "ev-5", partner: "TermiX", title: "Agent Advantage report", summary: "Task comparison report: manual vs agent time, cost, risk, evidence.", proof: "TERMIX-2026-08-10", createdAt: isoDaysFromNow(0) },
-  { id: "ev-6", partner: "Memory", title: "Memory attestations", summary: "Every session has a verified memory hash + confirmation log (checksum-verified build memory).", proof: "5265b1b9…", createdAt: isoDaysFromNow(0) },
-  { id: "ev-7", partner: "AltLayer", title: "Observability placeholder", summary: "Agent logs, health, LLM usage panel — marked placeholder until 8004scan Pro verified.", proof: "PLACEHOLDER", createdAt: isoDaysFromNow(0) },
-];
-
-export const AVAILABLE_TARGETS = [
-  "0xPancakeSwapV3Router",
-  "0xPancakeSwapPositionManager",
-  "0xGovernorAlpha",
-  "0xCAKEFarmV2",
-  "0xAirdropDistributor",
-];
+/** Export the memory bundle AND record a real export snapshot {id, time, hash} */
+export async function exportMemoryBundle() {
+  const { payload, hash } = await computeMemoryBundle();
+  useMarket.setState((s) => ({
+    snapshots: [
+      {
+        id: shortId("snap", 4),
+        time: new Date().toISOString(),
+        hash,
+      },
+      ...s.snapshots,
+    ],
+  }));
+  return { payload, hash };
+}

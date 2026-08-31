@@ -126,11 +126,11 @@ export interface SessionManifest {
   created_at: string;
   status: SessionStatus;
   /**
-   * Delegation tree (D008): who delegated this session. Undefined = hired by
-   * the human. Set to the DELEGATING AGENT's identity (agent_id) when an agent
-   * hired this agent. Revocation: human may always revoke; an agent may only
-   * revoke sessions where parent_session_id === its own id (its sub-agents).
-   */
+   /** Delegation tree (D008): who delegated this session. Undefined = hired by
+    * the human. Set to the DELEGATING AGENT's identity (agent_id) when an agent
+    * hired this agent. Revocation: human may always revoke; an agent may only
+    * revoke sessions where parent_session_id === its own id (its sub-agents).
+    */
   parent_session_id?: string;
 }
 

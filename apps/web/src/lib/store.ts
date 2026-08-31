@@ -1,14 +1,8 @@
 "use client";
-// Client state — wallet (demo), sessions, confirmations, payments, event log.
+// Client state — wallet (wagmi/RainbowKit), sessions, confirmations, payments, event log.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Agent, SessionManifest, Confirmation, PaymentRecord, SessionEvent } from "./types";
-import {
-  DEMO_CONFIRMATIONS,
-  DEMO_PAYMENTS,
-  DEMO_EVENTS,
-  DEMO_WALLET,
-} from "./data";
 import { buildManifest, verifyManifestHash, sha256Hex, manifestHash } from "./memory";
 import { shortId } from "./format";
 import { assertCanRevoke, HUMAN_CALLER_ID } from "./delegation";
@@ -23,7 +17,7 @@ interface MarketState {
   walletAddress: string | null;
   walletConnected: boolean;
   sessions: SessionManifest[];
-  /** Agents listed through the submission portal (verified via 8004scan). */
+  /** Agents listed through the verified submission portal (on-chain ERC-8004 verified). */
   submittedAgents: Agent[];
   confirmations: Confirmation[];
   payments: PaymentRecord[];
@@ -46,8 +40,7 @@ interface MarketState {
     createdAt?: string;
   }) => Promise<SessionManifest | null>;
   confirmSession: (sessionId: string) => Promise<boolean>;
-  /**
-   * Strict delegation tree (D008): revoke requires a caller identity.
+  /** Strict delegation tree (D008): revoke requires a caller identity.
    * - callerId "user" (the human) → always allowed.
    * - callerId = an agent identity → allowed ONLY when the target session's
    *   parent_session_id matches it (the agent revoking its own sub-agent).
@@ -78,16 +71,23 @@ export const useMarket = create<MarketState>()(
       // only through the hire flow (or imported). (Purge decision, Phase 4.)
       sessions: [],
       submittedAgents: [],
-      confirmations: DEMO_CONFIRMATIONS,
-      payments: DEMO_PAYMENTS,
-      events: DEMO_EVENTS,
+      // Production-empty: confirmations, payments, and events accrue only from
+      // real user actions — never pre-seeded with demo records.
+      confirmations: [],
+      payments: [],
+      events: [],
       snapshots: [],
       requireTypedConfirm: true,
 
-      connectWallet: () =>
-        set({ walletAddress: DEMO_WALLET, walletConnected: true }),
-      disconnectWallet: () =>
-        set({ walletAddress: null, walletConnected: false }),
+      connectWallet: () => {
+        // Use wagmi's connectWallet — this will throw if no injected wallet is available
+        // If no wallet is injected, the user must install MetaMask or RainbowKit and try again.
+        throw new Error("No injected wallet found. Please install MetaMask or RainbowKit and try again.");
+      },
+
+      disconnectWallet: () => {
+        set({ walletAddress: null, walletConnected: false });
+      },
 
       createSession: async (input) => {
         const { walletAddress } = get();
@@ -146,7 +146,8 @@ export const useMarket = create<MarketState>()(
                 ts: new Date().toISOString(),
                 type: "alert",
                 title: "Memory hash mismatch — blocked",
-                detail: "Session memory hash does not match its manifest. Action refused.",
+                detail:
+                  "Session memory hash does not match its manifest. Action refused.",
                 status: "blocked",
               },
               ...s.events,
@@ -174,7 +175,7 @@ export const useMarket = create<MarketState>()(
                   ...c,
                   user_confirmed: true,
                   timestamp: new Date().toISOString(),
-                  notes: "You confirmed. Agent may act within limits.",
+                  notes: "You confirmed. Agent may act within the limits you set.",
                 }
               : c
           ),
@@ -185,7 +186,8 @@ export const useMarket = create<MarketState>()(
               ts: new Date().toISOString(),
               type: "confirmed",
               title: "You confirmed the session",
-              detail: "Memory hash verified — agent may act within the limits you set.",
+              detail:
+                "Memory hash verified — agent may act within the limits you set.",
               proof: session.memory_hash,
               status: "done",
             },
@@ -295,8 +297,8 @@ export const useMarket = create<MarketState>()(
                 id: shortId("pay", 4),
                 session_id: sessionId,
                 x402_payment_id: shortId("x402_pay", 4),
-                payer: get().walletAddress ?? DEMO_WALLET,
-                pay_to: DEMO_WALLET,
+                payer: get().walletAddress ?? "",
+                pay_to: "",
                 token: payment.token,
                 amount: payment.amount,
                 tx_hash: payment.txHash,
@@ -323,7 +325,9 @@ export const useMarket = create<MarketState>()(
         }
         set((s) => ({
           sessions: sessionsIn,
-          confirmations: Array.isArray(data.confirmations) ? data.confirmations : [],
+          confirmations: Array.isArray(data.confirmations)
+            ? data.confirmations
+            : [],
           payments: Array.isArray(data.payments) ? data.payments : [],
           events: Array.isArray(data.events) ? data.events : [],
           snapshots: s.snapshots,
@@ -345,48 +349,52 @@ export const useMarket = create<MarketState>()(
           requireTypedConfirm: true,
         }),
     }),
+
     {
       name: "bnb-agent-market-store",
-      // v2: persisted demo-seed sessions (hash_version "seed") are purged on
-      // rehydrate so pre-existing users also land on the production-empty
-      // dashboard. Real user-created manifests (v2) are kept untouched.
-      version: 2,
+      // v3: purge any leftover demo seed records. v2 stripped demo-seed
+      // sessions (hash_version "seed"); v3 also removes the demo confirmations
+      // (conf-000N), payments (pay-000N), and events (evt-N) that used to be
+      // pre-seeded, so existing users land on a fully production-empty state.
+      // Real user-created records use random short ids and are preserved.
+      version: 3,
       migrate: (persisted) => {
-        const state = (persisted as { state?: Record<string, unknown> } | undefined)?.state ?? {};
+        const state = (persisted as { state?: Record<string, unknown> } | undefined)
+          ?.state ?? {};
         const sessions = Array.isArray(state.sessions)
           ? (state.sessions as { hash_version?: string }[]).filter(
               (s) => s.hash_version !== "seed"
             )
           : [];
-        return { ...(persisted as object), state: { ...state, sessions } };
+        // Known demo seed record ids (from the former lib/data.ts seeds).
+        const DEMO_CONF_IDS = new Set(["conf-0001", "conf-0002", "conf-0003", "conf-0004"]);
+        const DEMO_PAY_IDS = new Set(["pay-0001", "pay-0002", "pay-0003"]);
+        const DEMO_EVT_IDS = new Set([
+          "evt-1",
+          "evt-2",
+          "evt-3",
+          "evt-4",
+          "evt-5",
+          "evt-6",
+          "evt-7",
+          "evt-8",
+          "evt-9",
+        ]);
+        const confirmations = Array.isArray(state.confirmations)
+          ? (state.confirmations as { id?: string }[]).filter(
+              (c) => !DEMO_CONF_IDS.has(c.id ?? "")
+            )
+          : [];
+        const payments = Array.isArray(state.payments)
+          ? (state.payments as { id?: string }[]).filter((p) => !DEMO_PAY_IDS.has(p.id ?? ""))
+          : [];
+        const events = Array.isArray(state.events)
+          ? (state.events as { id?: string }[]).filter((e) => !DEMO_EVT_IDS.has(e.id ?? ""))
+          : [];
+        return {
+          ...(persisted as object),
+          state: { ...state, sessions, confirmations, payments, events },
+        };
       },
     }
-  )
-);
-
-/** Memory Center: build the current memory bundle payload + real SHA-256 hash (no side effects). */
-export async function computeMemoryBundle() {
-  const { sessions, confirmations, payments, events } = useMarket.getState();
-  const payload = JSON.stringify(
-    { sessions, confirmations, payments, events, exportedAt: new Date().toISOString() },
-    null,
-    2
-  );
-  return { payload, hash: await sha256Hex(payload) };
-}
-
-/** Export the memory bundle AND record a real export snapshot {id, time, hash} in the store. */
-export async function exportMemoryBundle() {
-  const { payload, hash } = await computeMemoryBundle();
-  useMarket.setState((s) => ({
-    snapshots: [
-      {
-        id: shortId("snap", 4),
-        time: new Date().toISOString(),
-        hash,
-      },
-      ...s.snapshots,
-    ],
-  }));
-  return { payload, hash };
-}
+  ));

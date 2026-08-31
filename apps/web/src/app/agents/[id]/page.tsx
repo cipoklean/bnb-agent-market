@@ -28,7 +28,7 @@ import {
 } from "@/components/ui";
 import TrustPanel from "@/components/TrustPanel";
 import RiskBadge from "@/components/RiskBadge";
-import { sampleAgentById } from "@/lib/data";
+import { scanAgentById } from "@//lib/data";
 import {
   agentShapeFromView,
   isLiveSourced,
@@ -37,7 +37,7 @@ import {
   parseCanonicalId,
   parseScanId,
 } from "@/lib/scan-normalize";
-import { erc8004Adapter, MAINNET_AGENT_LINK } from "@/lib/adapters/erc8004";
+import { erc8004Adapter } from "@/lib/adapters/erc8004";
 import { useMarket } from "@/lib/store";
 import { formatAmount, formatPercent, timeAgo } from "@/lib/format";
 import type { Agent, Erc8004ScanMetrics, FeeModel } from "@/lib/types";
@@ -77,7 +77,7 @@ export default function AgentProfilePage() {
     () =>
       lk
         ? liveAgent
-        : sampleAgentById(id ?? "") ?? submittedAgents.find((a) => a.id === id) ?? null,
+        : submittedAgents.find((a) => a.id === id) ?? null,
     [lk, liveAgent, id, submittedAgents]
   );
   const liveProfile = agent !== null && isLiveSourced(agent.id);
@@ -114,15 +114,9 @@ export default function AgentProfilePage() {
     };
   }, [lk]);
 
-  // Live mainnet metrics — the old sample-registry path (portfolio-reporter in
-  // dev sample mode). The adapter never throws: console.warn + null, page stays.
-  useEffect(() => {
-    if (!id || lk || id !== MAINNET_AGENT_LINK.agentId) return;
-    let cancelled = false;
-    erc8004Adapter.getLiveScanMetrics(id).then((m) => {
-      if (!cancelled) setScanMetrics(m);
-    });
-    return () => {
+  // No live scan metrics fetcher — all agent data comes from on-chain verification
+  // and the verified submission portal. The adapter returns null for non-registered
+  // agents, and the UI gracefully keeps the on-chain verified data.
       cancelled = true;
     };
   }, [id, lk]);
