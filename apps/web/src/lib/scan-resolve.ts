@@ -1,15 +1,13 @@
-// Session-context agent lookup — submitted-store entry → scan/canonical slug →
-// dev-only sample registry → null. Lives apart from scan-normalize.ts because
-// it needs the sample registry (data.ts); the pure normalizers stay
-// node-testable.
+// Session-context agent lookup — submitted-store entry → scan/canonical slug
+// → null. Lives apart from scan-normalize.ts because it needs the store types;
+// the pure normalizers stay node-testable.
 import type { Agent } from "./types";
-import { sampleAgentById } from "./data";
 import { GENERIC_CAPABILITY, parseCanonicalId, parseScanId } from "./scan-normalize";
 
 /**
  * Resolve the agent behind a session (dashboard cards, session pages, payment
- * sheet): submitted-store entry → scan/canonical slug → sample registry
- * (dev-only) → null.
+ * sheet): submitted-store entry → scan/canonical slug → null.
+ * No sample-registry fallback — demo agents are purged from production.
  */
 export function resolveSessionAgent(agentId: string, submittedAgents?: Agent[]): Agent | null {
   const sub = submittedAgents?.find((a) => a.id === agentId);
@@ -41,7 +39,7 @@ export function resolveSessionAgent(agentId: string, submittedAgents?: Agent[]):
       performance: [],
     };
   }
-  return sampleAgentById(agentId) ?? null;
+  return null;
 }
 
 export function sessionAgentName(agentId: string, submittedAgents?: Agent[]): string {

@@ -15,9 +15,7 @@ import {
   Zap,
 } from "lucide-react";
 import MarketClient from "@/components/MarketClient";
-import SampleAgentGrid from "@/components/SampleAgentGrid";
 import { PanelGlass, SectionTitle } from "@/components/ui";
-import { sampleAgentsEnabled } from "@/lib/data";
 import { getDirectory } from "@/lib/directory-cache";
 import { normalizeScanEntry } from "@/lib/scan-normalize";
 
@@ -32,26 +30,6 @@ const SAFETY = [
 ];
 
 export default async function AlphaDeskPage() {
-  if (sampleAgentsEnabled()) {
-    return (
-      <div className="flex flex-col gap-10">
-        <div>
-          <Link href="/" className="link inline-flex items-center gap-1 text-[13px]">
-            <ArrowLeft size={13} /> Home
-          </Link>
-        </div>
-        <section className="flex flex-col items-center py-6 text-center">
-          <span className="badge-gold mb-4">Vertical 01 — DeFi & Trading</span>
-          <h1 className="title-page max-w-2xl !text-[32px] leading-tight sm:!text-[38px]">AlphaDesk</h1>
-          <p className="body-sm mt-3 max-w-xl !text-[15px]">
-            SAMPLE MODE — deterministic demo agents.
-          </p>
-        </section>
-        <SampleAgentGrid vertical="alphadesk" />
-      </div>
-    );
-  }
-
   const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
 

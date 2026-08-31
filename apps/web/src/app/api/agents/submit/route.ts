@@ -8,6 +8,7 @@
 //   { agentId8004: "56:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432:263312",
 //     metadata: { name: "Portfolio Reporter v2" } }
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createPublicClient, http } from "viem";
 import { bsc } from "viem/chains";
 

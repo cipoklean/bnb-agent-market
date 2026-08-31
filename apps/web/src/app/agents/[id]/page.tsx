@@ -28,7 +28,6 @@ import {
 } from "@/components/ui";
 import TrustPanel from "@/components/TrustPanel";
 import RiskBadge from "@/components/RiskBadge";
-import { scanAgentById } from "@//lib/data";
 import {
   agentShapeFromView,
   isLiveSourced,

@@ -18,9 +18,7 @@ import {
 } from "lucide-react";
 import ScanAgentCard from "@/components/ScanAgentCard";
 import CountUp from "@/components/CountUp";
-import SampleHome from "@/components/SampleHome";
 import { PanelGlass, SectionTitle } from "@/components/ui";
-import { sampleAgentsEnabled } from "@/lib/data";
 import { getDirectory } from "@/lib/directory-cache";
 import { timeAgo } from "@/lib/format";
 import { normalizeScanEntry } from "@/lib/scan-normalize";
@@ -56,9 +54,6 @@ const TRUST = [
 ];
 
 export default async function HomePage() {
-  // Dev-only sample registry (NEXT_PUBLIC_SAMPLE_DATA=1) — never production.
-  if (sampleAgentsEnabled()) return <SampleHome />;
-
   const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
   const featured = [...live]

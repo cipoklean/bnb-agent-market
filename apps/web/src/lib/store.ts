@@ -398,3 +398,29 @@ export const useMarket = create<MarketState>()(
       },
     }
   ));
+/** Memory Center: build the current memory bundle payload + real SHA-256 hash (no side effects). */
+export async function computeMemoryBundle() {
+  const { sessions, confirmations, payments, events } = useMarket.getState();
+  const payload = JSON.stringify(
+    { sessions, confirmations, payments, events, exportedAt: new Date().toISOString() },
+    null,
+    2
+  );
+  return { payload, hash: await sha256Hex(payload) };
+}
+
+/** Export the memory bundle AND record a real export snapshot {id, time, hash} in the store. */
+export async function exportMemoryBundle() {
+  const { payload, hash } = await computeMemoryBundle();
+  useMarket.setState((s) => ({
+    snapshots: [
+      {
+        id: shortId("snap", 4),
+        time: new Date().toISOString(),
+        hash,
+      },
+      ...s.snapshots,
+    ],
+  }));
+  return { payload, hash };
+}

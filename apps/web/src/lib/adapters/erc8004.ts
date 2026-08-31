@@ -7,6 +7,15 @@
 // Implementations must return real on-chain data; mock/placeholder data is not permitted.
 import type { Agent, Erc8004ScanMetrics } from "../types";
 
+/** The adapter contract marketplace code depends on. Real on-chain data only. */
+export interface IErc8004Adapter {
+  getAgentById(agentId: string): Promise<Agent | null>;
+  getAgentByAddress(address: string): Promise<Agent | null>;
+  listAgents(vertical?: "alphadesk" | "taskchain"): Promise<Agent[]>;
+  getAttestations(agentId: string): Promise<Agent["attestations"]>;
+  getLiveScanMetrics(agentId: string): Promise<Erc8004ScanMetrics | null>;
+}
+
 // Minimal ERC-8004 registry ABI — only ownerOf(tokenId) is needed for verification.
 // The registry address on BSC mainnet: 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
 // This is the same registry used by the A2A submission endpoint for on-chain verification.
@@ -47,7 +56,7 @@ async function verifyAgentOnChain(agentId8004: string): Promise<{
 
   try {
     const owner = await publicClient.readContract({
-      address: registryAddress,
+      address: registryAddress as `0x${string}`,
       abi: MINIMAL_ERC8004_ABI,
       functionName: "ownerOf",
       args: [tokenId],
@@ -166,7 +175,6 @@ export const erc8004Adapter: IErc8004Adapter = {
       feeModel: "pay_per_task",
       verified: true, // Verified via on-chain registry
       verifiedVia8004: true,
-      verifiedViaSubmissionPortal: false,
       capabilities: [],
       controls: ["Identity verified on ERC-8004 registry"],
       attestations: [],

@@ -5,17 +5,12 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import MarketClient from "@/components/MarketClient";
-import SampleMarketplace from "@/components/SampleMarketplace";
-import { sampleAgentsEnabled } from "@/lib/data";
 import { getDirectory } from "@/lib/directory-cache";
 import { normalizeScanEntry } from "@/lib/scan-normalize";
 
 export const dynamic = "force-dynamic";
 
 export default async function MarketplacePage() {
-  // Dev-only sample registry (NEXT_PUBLIC_SAMPLE_DATA=1) — never production.
-  if (sampleAgentsEnabled()) return <SampleMarketplace />;
-
   const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
 

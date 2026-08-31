@@ -23,7 +23,7 @@ import {
 } from "@/components/ui";
 import PermissionEditor, { type PermissionValue } from "@/components/PermissionEditor";
 import PaymentSheet from "@/components/PaymentSheet";
-import { SAMPLE_AGENTS, sampleAgentById, sampleAgentsEnabled } from "@/lib/data";
+import { sampleAgentsEnabled } from "@/lib/data";
 import {
   agentShapeFromView,
   GENERIC_CAPABILITY,
@@ -126,11 +126,7 @@ function HireWizard() {
 
   const agent: Agent | null = useMemo(() => {
     if (lk) return liveAgent;
-    return (
-      submittedAgents.find((a) => a.id === agentId) ??
-      (sampleAgentsEnabled() ? sampleAgentById(agentId) ?? null : null) ??
-      null
-    );
+    return submittedAgents.find((a) => a.id === agentId) ?? null;
   }, [lk, liveAgent, agentId, submittedAgents]);
   const liveHire = agent !== null && /^(scan-|submitted-)/.test(agent.id);
 
@@ -424,21 +420,6 @@ function HireWizard() {
                   Change
                 </Link>
               </div>
-            </div>
-          ) : sampleAgentsEnabled() ? (
-            <div>
-              <div className="label mb-1.5">Agent</div>
-              <select
-                className="select"
-                value={agent.id}
-                onChange={(e) => setAgentId(e.target.value)}
-              >
-                {SAMPLE_AGENTS.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name} — {a.category}
-                  </option>
-                ))}
-              </select>
             </div>
           ) : null}
           <div>
