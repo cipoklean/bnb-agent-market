@@ -117,9 +117,6 @@ export default function AgentProfilePage() {
   // No live scan metrics fetcher — all agent data comes from on-chain verification
   // and the verified submission portal. The adapter returns null for non-registered
   // agents, and the UI gracefully keeps the on-chain verified data.
-      cancelled = true;
-    };
-  }, [id, lk]);
 
   const liveSession = useMemo(
     () =>
@@ -451,7 +448,7 @@ export default function AgentProfilePage() {
               )}
               <div className="flex items-center justify-between gap-2">
                 <a
-                  href={MAINNET_AGENT_LINK.scanUrl}
+                  href={`https://8004scan.io/agents/${lk?.chainId}/${lk?.tokenId}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-ghost btn-sm"
