@@ -36,6 +36,9 @@ contract SessionRegistry {
         bytes32 hireId; /// @dev Linked HireAgreement id, or bytes32(0) if none.
         address user; /// @dev The user who authorized the session.
         address agent; /// @dev The agent operating within the session.
+        bytes32 parent_session_id; /// @dev The session ID or agent address that delegated this session.
+                                 ///  - bytes32(0) → hired by the human
+                                 ///  - any session ID → hired BY that agent (sub-agent)
         bytes32 sessionKeyHash; /// @dev keccak256 of the agent's session key.
         string spendToken; /// @dev Symbol of the spend token (e.g. "BNB").
         uint256 spendCap; /// @dev Max total spend for the session.
@@ -111,6 +114,9 @@ contract SessionRegistry {
 
     /// @notice Create a runtime session. Caller must be the user or the owner.
     /// @return id The unique session id.
+    /// @param parent_session_id The session ID or agent address that delegated this session.
+    ///  - bytes32(0) → hired by the human
+    ///  - any session ID → hired BY that agent (sub-agent)
     function createSession(
         address user,
         address agent,
@@ -120,7 +126,8 @@ contract SessionRegistry {
         uint256 spendCap,
         uint256 expiry,
         bytes32 allowedTargetsHash,
-        bytes32 allowedSelectorsHash
+        bytes32 allowedSelectorsHash,
+        bytes32 parent_session_id
     ) external returns (bytes32 id) {
         if (paused) revert Paused_();
         if (msg.sender != user && msg.sender != owner) revert NotAuthorized_();
@@ -135,6 +142,7 @@ contract SessionRegistry {
             hireId: hireId,
             user: user,
             agent: agent,
+            parent_session_id: parent_session_id,
             sessionKeyHash: sessionKeyHash,
             spendToken: spendToken,
             spendCap: spendCap,
@@ -174,18 +182,28 @@ contract SessionRegistry {
     }
 
     /// @notice Revoke a session. Owner may revoke any session; the user or the agent
-    ///         may only revoke their own.
+    ///         may only revoke their own, respecting the delegation hierarchy.
     /// @param by Caller-reported revoker address, kept for OFF-CHAIN attribution.
     ///        IMPORTANT: attribution is caller-reported, not trustless — any caller
     ///        may pass any address here. The indexer log of `msg.sender` plus any
     ///        signed/off-chain evidence is the authoritative record of who revoked.
     ///        Pass address(0) to record `msg.sender`.
+    /// @dev Emits SessionRevoked. Only the session owner, the session user, or an agent
+    ///     may revoke a session. An agent may only revoke a session whose
+    ///     parent_session_id matches the agent's address (i.e. the sub-agent it delegated).
     function revokeSession(bytes32 sessionId, address by) external {
         Session storage session = _requireSession(sessionId);
 
+        // Hierarchy validation: check revocation rights based on delegation
         bool isOwner = msg.sender == owner;
         bool isUser = msg.sender == session.user;
         bool isAgent = msg.sender == session.agent;
+
+        // Agent may only revoke sessions it delegated (parent_session_id matches agent)
+        if (isAgent && session.parent_session_id != msg.sender) {
+            revert NotAuthorized_();
+        }
+
         if (!isOwner && !isUser && !isAgent) revert NotAuthorized_();
 
         address revoker = by == address(0) ? msg.sender : by;

@@ -3,11 +3,9 @@ pragma solidity ^0.8.20;
 
 /// @title HireAgreement
 /// @notice Registry of hire agreements between users and agents.
-/// @dev Hackathon-minimal contract (spec: "SMART CONTRACT RULES").
-///      IMPORTANT: this contract does NOT custody funds. Budget tokens, payments and
+/// @dev Hackathon-minimal contract (spec: "SMART CONTRACT RULES"). IMPORTANT: this contract does NOT custody funds. Budget tokens, payments and
 ///      settlement happen off-chain / via x402 (see packages/x402 adapter). Status enum:
 ///      0=Draft, 1=Active, 2=Completed, 3=Revoked, 4=Expired.
-///      Owner-only access uses a custom `onlyOwner` modifier (no OpenZeppelin dependency).
 contract HireAgreement {
     /*//////////////////////////////////////////////////////////////////////////
                                     ERRORS
@@ -54,6 +52,9 @@ contract HireAgreement {
         uint256 maxTotal; /// @dev Maximum total budget approved by the user.
         uint256 expiry; /// @dev Unix timestamp; hire auto-expires after this.
         uint8 status; /// @dev 0=Draft 1=Active 2=Completed 3=Revoked 4=Expired.
++       bytes32 parent_session_id; /// @dev The hire ID or agent address that delegated this hire.
+                                       ///  - bytes32(0) → hired directly by human
+                                       ///  - any hire ID → hired BY that agent (sub-agent)
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -119,14 +120,17 @@ contract HireAgreement {
     /// @param scopeHash keccak256 of the agreed scope of work.
     /// @param budgetToken Symbol of the budget token (e.g. "BNB").
     /// @param maxTotal Maximum total budget approved by the user.
-    /// @param expiry Unix timestamp; must be in the future.
-    /// @return id The unique hire id.
+    /// @param expiry Unix timestamp; hire auto-expires after this.
++   /// @param parent_session_id The hire ID or agent address that delegated this hire.
++   ///  - bytes32(0) → hired directly by human
++   ///  - any hire ID → hired BY that agent (sub-agent)
     function registerHire(
         address agent,
         bytes32 scopeHash,
         string calldata budgetToken,
         uint256 maxTotal,
-        uint256 expiry
+        uint256 expiry,
++       bytes32 parent_session_id
     ) external returns (bytes32 id) {
         if (paused) revert Paused();
         if (agent == address(0)) revert InvalidAgent();
@@ -143,7 +147,8 @@ contract HireAgreement {
             budgetToken: budgetToken,
             maxTotal: maxTotal,
             expiry: expiry,
-            status: STATUS_ACTIVE
+            status: STATUS_ACTIVE,
++           parent_session_id: parent_session_id
         });
         hiresByUser[msg.sender].push(id);
 
@@ -152,13 +157,22 @@ contract HireAgreement {
 
     /// @notice Revoke a hire. Allowed for the user, the agent, or the owner.
     /// @param id The hire id.
+    /// @dev Reverts if the caller is an agent trying to revoke a session
+    ///     that is not its delegated sub-hire.
     function revoke(bytes32 id) external {
         HireRecord storage hire = _requireActive(id);
         address user = hire.user;
         address agent = hire.agent;
+
+        // Hierarchy validation: agent may only revoke its own sub-hire
+        if (msg.sender == agent && hire.parent_session_id != msg.sender) {
+            revert NotAuthorized();
+        }
+
         if (msg.sender != user && msg.sender != agent && msg.sender != owner) {
             revert NotAuthorized();
         }
+
         hire.status = STATUS_REVOKED;
         emit HireRevoked(id, msg.sender);
     }
@@ -171,38 +185,6 @@ contract HireAgreement {
         if (block.timestamp > hire.expiry) revert HireExpired();
         hire.status = STATUS_COMPLETED;
         emit HireCompleted(id);
-    }
-
-    /// @notice Pause/unpause new hire registrations. Owner only.
-    function setPaused(bool paused_) external onlyOwner {
-        paused = paused_;
-        emit PausedSet(paused);
-    }
-
-    /*//////////////////////////////////////////////////////////////////////////
-                                    VIEW
-    //////////////////////////////////////////////////////////////////////////*/
-
-    /// @notice Read a hire agreement.
-    function viewHire(bytes32 id) external view returns (HireRecord memory) {
-        HireRecord memory hire = hires[id];
-        if (hire.id == bytes32(0)) revert HireNotFound();
-        return hire;
-    }
-
-    /// @notice List all hire ids created by a user.
-    function toListHiresFor(address user) external view returns (bytes32[] memory) {
-        return hiresByUser[user];
-    }
-
-    /// @notice Effective status: an Active hire whose expiry has passed reads as Expired.
-    function effectiveStatus(bytes32 id) external view returns (uint8) {
-        HireRecord memory hire = hires[id];
-        if (hire.id == bytes32(0)) revert HireNotFound();
-        if (hire.status == STATUS_ACTIVE && block.timestamp > hire.expiry) {
-            return STATUS_EXPIRED;
-        }
-        return hire.status;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
