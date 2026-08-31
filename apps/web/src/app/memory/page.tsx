@@ -74,9 +74,9 @@ export default function MemoryPage() {
       project: project || "BNB Agent Market Core",
       currentPhase: phase || "Frontend build",
       activeProduct: "BNB Agent Market Core (AlphaDesk + TaskChain Bazaar)",
-      confirmedGoal: "Ship the Lumen Deck frontend with honest, labeled demo data.",
+      confirmedGoal: "Ship the production marketplace with live 8004scan data.",
       knownConstraints: [
-        "Adapters marked DEMO until official SDKs are verified",
+        "Real wallet connect (BSC mainnet enforced) · sessions carry signed confirmation proofs",
         "No unverified on-chain claims",
         "Safety over features",
       ],

@@ -60,7 +60,7 @@ const FEE_LABEL: Record<FeeModel, string> = {
 export default function AgentProfilePage() {
   const params = useParams();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
-  const { sessions, submittedAgents } = useMarket();
+  const { sessions, submittedAgents, walletConnected } = useMarket();
 
   // Live-directory agents resolve by slug ("scan-56-263312") OR by the
   // canonical ERC-8004 id ("56:0x<registry>:263312") — fetched through the
@@ -198,7 +198,7 @@ export default function AgentProfilePage() {
             </div>
           </div>
           <Link href={`/hire?agent=${agent.id}`} className="btn-primary shrink-0">
-            <Zap size={14} /> Hire this agent
+            <Zap size={14} /> {walletConnected ? "Hire this agent" : "Connect wallet to hire"}
           </Link>
         </div>
       </div>

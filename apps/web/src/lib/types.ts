@@ -155,6 +155,8 @@ export interface Confirmation {
   agent_confirmed: boolean;
   timestamp: string;
   notes: string;
+  /** personal_sign signature over the manifest hash — the user's confirmation proof. */
+  signature_proof?: string;
 }
 
 export interface PaymentRecord {

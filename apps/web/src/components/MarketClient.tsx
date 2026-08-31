@@ -34,6 +34,7 @@ export default function MarketClient({
   fetchedAt,
   note,
   initialCategory,
+  initialQuery,
 }: {
   live: LiveAgentView[];
   total: number;
@@ -43,9 +44,10 @@ export default function MarketClient({
   fetchedAt?: string;
   note?: string;
   initialCategory?: CatFilter;
+  initialQuery?: string;
 }) {
   const { submittedAgents } = useMarket();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [filter, setFilter] = useState<Filter>("all");
   // Default sort = highest 8004scan score (rubric: data quality beyond basic
   // counts). Feedback/score ties fall back to the newest agent id so the
@@ -331,8 +333,8 @@ export default function MarketClient({
       ) : (
         <EmptyState
           icon={<Search size={20} />}
-          title="No agents match"
-          description="Try a different search term, or list your own agent in this directory."
+          title="No verified agents in this category yet"
+          description="Be the first to submit one — identity is verified against the on-chain ERC-8004 registry before listing."
           action={
             <Link href="/submit" className="btn-primary btn-sm">
               <Plus size={13} /> Submit an agent

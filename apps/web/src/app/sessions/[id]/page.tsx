@@ -9,6 +9,7 @@ import {
   Check,
   Clock,
   Lock,
+  PenLine,
   Shield,
   X,
   Zap,
@@ -307,6 +308,14 @@ export default function SessionDetailPage() {
                   <div className="min-w-0">
                     <div className="text-[14px] font-medium capitalize">{c.action_type.replace("_", " ")}</div>
                     <p className="caption mt-0.5">{c.notes}</p>
+                    {c.signature_proof && (
+                      <p className="caption mt-1 flex items-center gap-1 text-success">
+                        <PenLine size={11} className="shrink-0" /> Confirmation proof:{" "}
+                        <span className="hash !text-[10px]">
+                          {c.signature_proof.slice(0, 20)}…{c.signature_proof.slice(-6)}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <RiskBadge risk={c.risk} />

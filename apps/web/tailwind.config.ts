@@ -15,7 +15,7 @@ const config: Config = {
         "primary-contrast": "#0B0E14",
         gold: "#F0B90B",
         amber: "#F59E0B",
-        success: "#22C55E",
+        success: "#2EBD85",
         warning: "#F59E0B",
         danger: "#EF4444",
         info: "#6C8CFF",

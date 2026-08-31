@@ -10,7 +10,11 @@ import { normalizeScanEntry, dedupeAndOrder } from "@/lib/scan-normalize";
 
 export const dynamic = "force-dynamic";
 
-export default async function MarketplacePage() {
+export default async function MarketplacePage({
+  searchParams,
+}: {
+  searchParams?: { q?: string; category?: string };
+}) {
   const dir = await getDirectory({ chainId: 56, limit: 24 });
   const live = dedupeAndOrder(dir.agents.map((raw) => normalizeScanEntry(raw, 56)));
 
@@ -34,6 +38,8 @@ export default async function MarketplacePage() {
         stale={dir.stale}
         source={dir.source}
         fetchedAt={dir.fetchedAt}
+        initialQuery={searchParams?.q ?? ""}
+        initialCategory={(searchParams?.category as never) ?? "all"}
       />
     </div>
   );

@@ -107,13 +107,13 @@ export default function SettingsPage() {
               <button onClick={disconnectWallet} className="btn-danger self-start">
                 Disconnect wallet
               </button>
-              <TrustNote>Demo wallet — no real funds are used and nothing moves on-chain.</TrustNote>
+              <TrustNote>Your keys stay in your wallet — sessions carry spend caps and instant revoke.</TrustNote>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               <p className="body-sm">Connect to create sessions, confirm memory, and approve payments.</p>
-              <button onClick={connectWallet} className="btn-primary self-start">
-                <Wallet size={14} /> Connect (demo)
+              <button onClick={() => void connectWallet().catch(() => {})} className="btn-primary self-start">
+                <Wallet size={14} /> Connect Wallet
               </button>
             </div>
           )}
@@ -134,8 +134,7 @@ export default function SettingsPage() {
             </select>
           </div>
           <p className="caption">
-            Demo note: switching networks does not change the labeled adapters — they
-            remain DEMO until official contract addresses are verified.
+            Sessions run on BNB Smart Chain — the network is enforced at wallet connect.
           </p>
         </Panel>
 

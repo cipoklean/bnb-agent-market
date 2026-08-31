@@ -1,11 +1,23 @@
 "use client";
-// Client state — wallet (wagmi/RainbowKit), sessions, confirmations, payments, event log.
+// Client state — real injected wallet (lib/wallet.ts), sessions, confirmations,
+// payments, event log. Browsing never requires a wallet; /hire does.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Agent, SessionManifest, Confirmation, PaymentRecord, SessionEvent } from "./types";
 import { buildManifest, verifyManifestHash, sha256Hex, manifestHash } from "./memory";
 import { shortId } from "./format";
 import { assertCanRevoke, HUMAN_CALLER_ID } from "./delegation";
+import {
+  connectWalletRequest,
+  silentAccounts,
+  walletAvailable,
+  isWalletError,
+  personalSign,
+  onWalletEvent,
+  BSC_CHAIN_ID,
+  currentChainId,
+  type WalletError,
+} from "./wallet";
 
 export interface ExportSnapshot {
   id: string;
@@ -16,6 +28,8 @@ export interface ExportSnapshot {
 interface MarketState {
   walletAddress: string | null;
   walletConnected: boolean;
+  /** True when the connected wallet sits on BSC mainnet (0x38). */
+  walletChainOk: boolean;
   sessions: SessionManifest[];
   /** Agents listed through the verified submission portal (on-chain ERC-8004 verified). */
   submittedAgents: Agent[];
@@ -25,8 +39,10 @@ interface MarketState {
   snapshots: ExportSnapshot[];
   requireTypedConfirm: boolean;
 
-  connectWallet: () => void;
+  connectWallet: () => Promise<string>;
   disconnectWallet: () => void;
+  /** Request personal_sign of the manifest hash → returns the signature proof. */
+  signConfirmation: (sessionId: string) => Promise<string | null>;
   createSession: (input: {
     product: SessionManifest["product"];
     agent_id: string;
@@ -67,6 +83,7 @@ export const useMarket = create<MarketState>()(
     (set, get) => ({
       walletAddress: null,
       walletConnected: false,
+      walletChainOk: false,
       // Production-empty: no pre-seeded demo sessions. Sessions are created
       // only through the hire flow (or imported). (Purge decision, Phase 4.)
       sessions: [],
@@ -79,14 +96,48 @@ export const useMarket = create<MarketState>()(
       snapshots: [],
       requireTypedConfirm: true,
 
-      connectWallet: () => {
-        // Use wagmi's connectWallet — this will throw if no injected wallet is available
-        // If no wallet is injected, the user must install MetaMask or RainbowKit and try again.
-        throw new Error("No injected wallet found. Please install MetaMask or RainbowKit and try again.");
+      // Real wallet connect (EIP-1193): eth_requestAccounts → enforce BSC
+      // mainnet (switch/add 0x38) → persist address. Never throws raw errors —
+      // WalletError is caught by callers and surfaced as a friendly modal.
+      connectWallet: async () => {
+        try {
+          const address = await connectWalletRequest();
+          set({ walletAddress: address, walletConnected: true });
+          return address;
+        } catch (e) {
+          // Keep state clean — UI reads the error from the returned value.
+          set({ walletAddress: null, walletConnected: false });
+          throw e;
+        }
       },
 
       disconnectWallet: () => {
+        // Local disconnect only (EIP-1193 has no disconnect); the wallet
+        // stays connected at the provider but our app forgets the address.
         set({ walletAddress: null, walletConnected: false });
+      },
+
+      /** personal_sign of the session's SHA-256 manifest hash — the user's
+       *  cryptographic confirmation proof. Stored on the confirmation record
+       *  and rendered as "Confirmation proof" in the session UI. */
+      signConfirmation: async (sessionId) => {
+        const { walletAddress, sessions } = get();
+        const session = sessions.find((s) => s.session_id === sessionId);
+        if (!walletAddress || !session) return null;
+        const message = `Confirm session ${session.session_id}\nManifest hash: ${session.memory_hash}\n\nBy signing you approve the session terms exactly as hashed above.`;
+        try {
+          const signature = await personalSign(message, walletAddress);
+          set((s) => ({
+            confirmations: s.confirmations.map((c) =>
+              c.session_id === sessionId && c.action_type === "session_confirm"
+                ? { ...c, user_confirmed: true, signature_proof: signature, timestamp: new Date().toISOString(), notes: "You signed the manifest hash — confirmation proof stored." }
+                : c
+            ),
+          }));
+          return signature;
+        } catch {
+          return null;
+        }
       },
 
       createSession: async (input) => {
@@ -423,4 +474,37 @@ export async function exportMemoryBundle() {
     ],
   }));
   return { payload, hash };
+}
+
+/**
+ * Wallet rehydration — call once from a client root (SiteHeader mounts it).
+ * Re-checks eth_accounts so a returning user stays connected, and keeps the
+ * store in sync when the user switches accounts or chains in their wallet.
+ */
+export function initWalletSync(): () => void {
+  if (typeof window === "undefined") return () => {};
+  void (async () => {
+    const accounts = await silentAccounts();
+    if (accounts.length > 0) {
+      const chain = await currentChainId();
+      useMarket.setState({ walletAddress: accounts[0], walletConnected: true });
+      // Wrong persisted chain is not a disconnect — mark it so the UI can
+      // prompt the switch on the next hire action.
+      useMarket.setState({ walletChainOk: chain === BSC_CHAIN_ID });
+    } else {
+      useMarket.setState({ walletAddress: null, walletConnected: false });
+    }
+  })();
+  return onWalletEvent((event, payload) => {
+    if (event === "accountsChanged") {
+      const accounts = payload as string[] | undefined;
+      if (!accounts || accounts.length === 0) {
+        useMarket.setState({ walletAddress: null, walletConnected: false });
+      } else {
+        useMarket.setState({ walletAddress: accounts[0], walletConnected: true });
+      }
+    } else if (event === "chainChanged") {
+      useMarket.setState({ walletChainOk: payload === BSC_CHAIN_ID });
+    }
+  });
 }

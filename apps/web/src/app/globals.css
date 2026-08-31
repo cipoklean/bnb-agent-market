@@ -12,7 +12,7 @@
     --muted: #98A2B3;
     --primary: #F0B90B;
     --primary-contrast: #0B0E14;
-    --success: #22C55E;
+    --success: #2EBD85;
     --warning: #F59E0B;
     --danger: #EF4444;
     --info: #6C8CFF;
@@ -38,18 +38,22 @@
 }
 
 @layer components {
-  /* Surfaces */
+  /* Surfaces — one unified card system: 1px #263043 border, same radius,
+     same padding scale, same hover lift. */
   .panel {
-    @apply bg-surface/80 border border-border/70 rounded-card backdrop-blur-sm shadow-panel-soft;
+    @apply bg-surface/80 border border-border rounded-card backdrop-blur-sm shadow-panel-soft transition-all duration-200;
   }
   .panel-glass {
-    @apply bg-surface/55 border border-border/60 rounded-card backdrop-blur-md shadow-panel;
+    @apply bg-surface/55 border border-border rounded-card backdrop-blur-md shadow-panel transition-all duration-200;
   }
   .card {
-    @apply bg-surface/80 border border-border/60 rounded-card p-5 transition-colors duration-200;
+    @apply bg-surface/80 border border-border rounded-card p-5 transition-all duration-200;
   }
   .card-hover {
-    @apply hover:border-primary/40 hover:bg-surface-2/70;
+    @apply hover:border-primary/40 hover:bg-surface-2/70 hover:-translate-y-0.5;
+  }
+  .empty-cta {
+    @apply flex flex-col items-center gap-3 rounded-card border border-dashed border-border bg-surface/40 px-6 py-10 text-center;
   }
 
   /* Text helpers */

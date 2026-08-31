@@ -75,6 +75,7 @@ function HireWizard() {
     connectWallet,
     createSession,
     confirmSession,
+    signConfirmation,
     markPaid,
     addEvent,
   } = useMarket();
@@ -258,6 +259,26 @@ function HireWizard() {
         setStatus("idle");
         return;
       }
+      // Confirmation proof: personal_sign of the SHA-256 manifest hash. The
+      // user approves the exact session terms cryptographically; the signature
+      // is stored with the session and shown as "Confirmation proof".
+      const signature = await signConfirmation(manifest.session_id);
+      if (!signature) {
+        setError(
+          "The manifest hash verified, but the signature was declined. You can sign later from the session page — nothing executes without it."
+        );
+        setStatus("idle");
+        setCreated(manifest);
+        return;
+      }
+      addEvent({
+        session_id: manifest.session_id,
+        type: "confirmed",
+        title: "Confirmation proof signed",
+        detail: "You signed the session manifest hash — proof stored with the session.",
+        proof: `${signature.slice(0, 22)}…`,
+        status: "done",
+      });
       const req = await x402Adapter.createPaymentRequest({
         payTo: agent.address,
         token: manifest.payment.token,
@@ -301,15 +322,16 @@ function HireWizard() {
           <div>
             <h1 className="title-page !text-[22px]">Connect your wallet to hire an agent</h1>
             <p className="body-sm mt-2">
-              You need a wallet to create a session, confirm its memory, and approve payments.
+              You need a wallet to create a session, sign its manifest hash, and approve payments.
+              BNB Smart Chain is enforced on connect.
             </p>
           </div>
           <TrustNote>
-            This demo connects a labeled demo wallet. No real funds are used and nothing
-            moves on-chain.
+            Your wallet stays yours — sessions carry spend caps, allowlists, and expiry,
+            and you can revoke anytime.
           </TrustNote>
-          <button onClick={connectWallet} className="btn-primary">
-            <Wallet size={14} /> Connect (demo)
+          <button onClick={() => void connectWallet().catch(() => {})} className="btn-primary">
+            <Wallet size={14} /> Connect Wallet
           </button>
           <Link href="/marketplace" className="link text-[13px]">
             <ArrowLeft size={12} className="inline" /> Back to marketplace

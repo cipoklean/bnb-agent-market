@@ -24,10 +24,10 @@ export default function DashboardPage() {
         <EmptyState
           icon={<Wallet size={20} />}
           title="Connect your wallet to see your sessions"
-          description="Your active agents, spending, and alerts live here. This demo connects a labeled demo wallet."
+          description="Your active agents, spending, and alerts live here — connect to load them."
           action={
-            <button onClick={connectWallet} className="btn-primary">
-              <Wallet size={14} /> Connect (demo)
+            <button onClick={() => void connectWallet().catch(() => {})} className="btn-primary">
+              <Wallet size={14} /> Connect Wallet
             </button>
           }
         />

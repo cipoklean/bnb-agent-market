@@ -136,7 +136,7 @@ export default function EvidencePage() {
         confirmations: liveConfirmations,
         payments: livePayments,
         note:
-          "Serialized live from the browser store at export time — these are the real records this demo session produced, not re-typed text.",
+          "Serialized live from the browser store at export time — the real records from this session, not re-typed text.",
       },
     };
     download(
