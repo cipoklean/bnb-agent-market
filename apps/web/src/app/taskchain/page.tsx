@@ -42,7 +42,7 @@ const TEMPLATES = [
 ];
 
 export default async function TaskChainPage() {
-  const dir = await getDirectory({ chainId: 56, limit: 24 });
+  const dir = await getDirectory({ chainId: 56, limit: 100 });
   const live = dedupeAndOrder(dir.agents.map((raw) => normalizeScanEntry(raw, 56)));
 
   return (

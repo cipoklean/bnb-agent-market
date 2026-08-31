@@ -113,6 +113,12 @@ export function normalizeCategoryInput(value: string | null | undefined): AgentC
  *   5. grid-trading fallback for generic trading metadata so trading agents
  *      (MevX-class) are surfaced in the rubric's Grid Trading pillar
  *      instead of vanishing into "Other".
+ *
+ * Name-only fallbacks (checked after ALL metadata stems, on the NAME alone,
+ * so generic ERC-8004 registry names still map to a pillar):
+ *   - "agent" in the name  → grid-trading  (the dominant registry naming)
+ *   - "ai" or "bot"        → yield
+ * These are intentionally LAST so a real description signal always wins.
  */
 const PRIORITY_STEMS: [AgentCategory, RegExp][] = [
   ["health-factor", /liquidat|health[- ]factor|health score|aave|venus|lista|collateral|borrow|lend\b|debt|margin/],
@@ -120,6 +126,12 @@ const PRIORITY_STEMS: [AgentCategory, RegExp][] = [
   ["rebalancing", /rebalance|re-balance|lp\b|liquidity|position|range|concentrated|v3/],
   ["yield", /yield|farm|apr|apy|staking|vault|autocompound|auto[-. ]compound|harvest/],
   ["grid-trading", /trade|trading|swap|mev|arbitrage|sniper|market[-. ]mak|dex\b|defi/],
+];
+
+/** Loose name-only fallbacks — applied after metadata stems, never before. */
+const NAME_FALLBACKS: [AgentCategory, RegExp][] = [
+  ["grid-trading", /agent/],
+  ["yield", /ai|bot/],
 ];
 
 /**
@@ -142,6 +154,16 @@ export function classifyAgent(input: {
 
   for (const [category, re] of PRIORITY_STEMS) {
     if (re.test(haystack)) {
+      return { category, inferred: true, score: 1 };
+    }
+  }
+
+  // Loose name-only fallbacks (see NAME_FALLBACKS doc): a strong metadata
+  // signal has already had its chance — map generic registry names to a
+  // pillar so they surface for users instead of vanishing into "Other".
+  const name = ` ${(input.name ?? "").toLowerCase()} `;
+  for (const [category, re] of NAME_FALLBACKS) {
+    if (re.test(name)) {
       return { category, inferred: true, score: 1 };
     }
   }

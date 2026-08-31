@@ -67,7 +67,10 @@ const TRUST = [
 ];
 
 export default async function HomePage() {
-  const dir = await getDirectory({ chainId: 56, limit: 24 });
+  // 100 = the 8004scan API's page maximum: tile counts see a real slice of
+  // the directory, not just the newest 24. getDirectory's TTL (5 min) means
+  // this stays a single upstream call per burst.
+  const dir = await getDirectory({ chainId: 56, limit: 100 });
   const live = dedupeAndOrder(dir.agents.map((raw) => normalizeScanEntry(raw, 56)));
   const top = live.slice(0, 3);
 
@@ -158,6 +161,16 @@ export default async function HomePage() {
             );
           })}
         </div>
+        {/* Honest "Other" line: agents in the window that no pillar rule
+            matched. Shown as a link so they are still reachable. */}
+        <Link
+          href="/marketplace?category=other"
+          className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-muted transition-colors hover:text-text"
+        >
+          <span className="tnum font-bold text-text">{counts["other"] ?? 0}</span>
+          other indexed agent{(counts["other"] ?? 0) === 1 ? "" : "s"} in this window —
+          browse them
+        </Link>
       </section>
 
       {/* TOP AGENTS RIGHT NOW — score-ordered live strip */}

@@ -36,6 +36,12 @@ const dump = `
   out.yield = classifyAgent({ name: "Yield Router", description: "Moves capital to the highest APY vault and auto-compounds farming rewards." });
   out.health = classifyAgent({ name: "Liquidation Guard", description: "Monitors your Venus health factor and repays debt before liquidation of collateral." });
   out.none = classifyAgent({ name: "Portfolio Reporter", description: "Publishes a plain-English portfolio report." });
+  // Loose name-only fallbacks (after all metadata stems miss):
+  out.nameAgent = classifyAgent({ name: "nexos.agent", description: "nexos" });
+  out.nameAi = classifyAgent({ name: "Always win AI", description: "sort the known facts" });
+  out.nameBot = classifyAgent({ name: "Turbo Bot", description: "goes brrr" });
+  out.habibi = classifyAgent({ name: "Habibiplus", description: "" });
+  out.descBeatsName = classifyAgent({ name: "something.agent", description: "Monitors your Venus health factor and repays before liquidation." });
   out.declared = classifyAgent({ name: "whatever", description: "grid grid grid", declaredCategory: "Yield Optimisation" });
   out.coreLen = CORE_CATEGORIES.length;
   out.normVariants = [
@@ -67,6 +73,11 @@ if (r.code === 0) {
   check("yield/apy/farm → yield", out.yield.category === "yield", JSON.stringify(out.yield));
   check("liquidation/health → health-factor", out.health.category === "health-factor", JSON.stringify(out.health));
   check("no signal → other, score 0", out.none.category === "other" && out.none.score === 0, JSON.stringify(out.none));
+  check("name '*.agent' (no metadata) → grid-trading fallback", out.nameAgent.category === "grid-trading", JSON.stringify(out.nameAgent));
+  check("name with 'ai' (no metadata) → yield fallback", out.nameAi.category === "yield", JSON.stringify(out.nameAi));
+  check("name with 'bot' (no metadata) → yield fallback", out.nameBot.category === "yield", JSON.stringify(out.nameBot));
+  check("no name/metadata signal at all → other", out.habibi.category === "other", JSON.stringify(out.habibi));
+  check("real description beats name fallback (health metadata → health-factor)", out.descBeatsName.category === "health-factor", JSON.stringify(out.descBeatsName));
   check("declared category wins, not inferred", out.declared.category === "yield" && out.declared.inferred === false, JSON.stringify(out.declared));
   check("normalizeCategoryInput accepts variants", JSON.stringify(out.normVariants) === JSON.stringify(["grid-trading", "health-factor", "yield", null]), JSON.stringify(out.normVariants));
 }
