@@ -115,6 +115,9 @@ export default function SessionDetailPage() {
           <h1 className="title-page">Session {session.session_id}</h1>
           <span className={st.cls}>{st.label}</span>
           <RiskBadge risk={agent?.riskLevel ?? "medium"} />
+          <Link href={`/report/${session.session_id}`} className="btn-ghost btn-sm">
+            Agent Advantage Report
+          </Link>
         </div>
         <p className="body-sm mt-1">
           {agent?.name ?? session.agent_id} · created {timeAgo(session.created_at)}

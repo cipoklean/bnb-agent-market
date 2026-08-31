@@ -4,10 +4,18 @@
 // on-chain metadata doesn't map to any of them.
 //
 // HONESTY: the 8004scan indexer does NOT record a category. We INFER one from
-// the agent's real registry metadata (name + description) using the keyword
-// scorer below. Every inferred category is flagged `inferred: true` and must be
-// surfaced as inferred in the UI/API — never presented as an on-chain fact.
-// Agents that self-declare a category (submission portal) override the guess.
+// the agent's real registry metadata (name + description) using the priority
+// regex classifier below. Every inferred category is flagged `inferred: true`
+// and must be surfaced as inferred in the UI/API — never presented as an
+// on-chain fact. Agents that self-declare a category (submission portal)
+// override the guess.
+//
+// Classification priority was tuned against LIVE 8004scan data (verified
+// 2026-08-31: e.g. "Warden" — a PancakeSwap v3 range rebalancer — must land
+// in Rebalancing, not Yield). Health-factor stems are checked first because
+// they are the rarest and most specific; a generic trading-agent fallback
+// then routes broad trading metadata into Grid Trading so trading agents
+// are never lost to "Other".
 //
 // Plain-TS-on-purpose (no imports, no runtime deps): this module is importable
 // directly by Node tests via `--experimental-strip-types`, so the category
@@ -35,8 +43,6 @@ export interface CategoryMeta {
   description: string;
   /** lucide-react icon name (resolved in the UI layer). */
   icon: string;
-  /** Lowercase keyword/phrase signals matched against agent metadata. */
-  keywords: string[];
 }
 
 export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
@@ -46,20 +52,6 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     short: "Rebalance",
     description: "Manages LP ranges and resets positions automatically.",
     icon: "Scale",
-    keywords: [
-      "rebalance",
-      "re-balance",
-      "rebalancing",
-      "lp range",
-      "in range",
-      "out of range",
-      "reposition",
-      "concentrated liquidity",
-      "v3 position",
-      "liquidity position",
-      "range order",
-      "tick range",
-    ],
   },
   "grid-trading": {
     id: "grid-trading",
@@ -67,15 +59,6 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     short: "Grid",
     description: "Places and manages automated grid orders within a range.",
     icon: "Grid3x3",
-    keywords: [
-      "grid",
-      "grid trading",
-      "grid bot",
-      "grid strategy",
-      "grid order",
-      "trading grid",
-      "dca grid",
-    ],
   },
   yield: {
     id: "yield",
@@ -83,23 +66,6 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     short: "Yield",
     description: "Routes liquidity to the highest available APR.",
     icon: "TrendingUp",
-    keywords: [
-      "yield",
-      "apr",
-      "apy",
-      "farm",
-      "farming",
-      "vault",
-      "harvest",
-      "auto-compound",
-      "autocompound",
-      "compounding",
-      "optimizer",
-      "optimiser",
-      "staking reward",
-      "best rate",
-      "highest rate",
-    ],
   },
   "health-factor": {
     id: "health-factor",
@@ -107,24 +73,6 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     short: "Health Factor",
     description: "Protects lending positions from liquidation.",
     icon: "HeartPulse",
-    keywords: [
-      "health factor",
-      "liquidat",
-      "liquidation",
-      "liquidate",
-      "collateral",
-      "ltv",
-      "loan-to-value",
-      "borrow",
-      "lending position",
-      "debt",
-      "loan position",
-      "aave",
-      "venus",
-      "lista",
-      "repay",
-      "margin call",
-    ],
   },
   other: {
     id: "other",
@@ -132,7 +80,6 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     short: "Other",
     description: "Agents whose metadata doesn't map to a core category.",
     icon: "Boxes",
-    keywords: [],
   },
 };
 
@@ -157,10 +104,28 @@ export function normalizeCategoryInput(value: string | null | undefined): AgentC
 }
 
 /**
- * Classify an agent from its real metadata. Counts keyword hits per category
- * over "name + description" and returns the highest-scoring category. Ties are
- * broken by CORE_CATEGORIES order (rebalancing > grid > yield > health-factor).
- * No hits → { category: "other", inferred: true, score: 0 }.
+ * Priority regex stems per category. Checked in order — first match wins:
+ *   1. health-factor  (rarest, most specific — never let "liquidation" fall through)
+ *   2. grid-trading   (core grid/order/DCA stems)
+ *   3. rebalancing    (LP/position/range stems — BEFORE yield so "rebalances a
+ *                      PancakeSwap v3 range" lands in Rebalancing, not Yield)
+ *   4. yield          (farm/APR/staking stems)
+ *   5. grid-trading fallback for generic trading metadata so trading agents
+ *      (MevX-class) are surfaced in the rubric's Grid Trading pillar
+ *      instead of vanishing into "Other".
+ */
+const PRIORITY_STEMS: [AgentCategory, RegExp][] = [
+  ["health-factor", /liquidat|health[- ]factor|health score|aave|venus|lista|collateral|borrow|lend\b|debt|margin/],
+  ["grid-trading", /grid|order book|limit order|dca|dollar[-. ]cost/],
+  ["rebalancing", /rebalance|re-balance|lp\b|liquidity|position|range|concentrated|v3/],
+  ["yield", /yield|farm|apr|apy|staking|vault|autocompound|auto[-. ]compound|harvest/],
+  ["grid-trading", /trade|trading|swap|mev|arbitrage|sniper|market[-. ]mak|dex\b|defi/],
+];
+
+/**
+ * Classify an agent from its real metadata. A self-declared category
+ * (submission portal) always wins; otherwise the first matching priority
+ * stem decides. No match → { category: "other", inferred: true, score: 0 }.
  *
  * @param input.declaredCategory optional self-declared category (submission);
  *        when it resolves to a known category it wins and inferred=false.
@@ -175,23 +140,11 @@ export function classifyAgent(input: {
 
   const haystack = ` ${(input.name ?? "").toLowerCase()} ${(input.description ?? "").toLowerCase()} `;
 
-  let best: AgentCategory = "other";
-  let bestScore = 0;
-  for (const cat of CORE_CATEGORIES) {
-    let score = 0;
-    for (const kw of CATEGORY_META[cat].keywords) {
-      // Count non-overlapping occurrences of each keyword signal.
-      let idx = haystack.indexOf(kw);
-      while (idx !== -1) {
-        score++;
-        idx = haystack.indexOf(kw, idx + kw.length);
-      }
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      best = cat;
+  for (const [category, re] of PRIORITY_STEMS) {
+    if (re.test(haystack)) {
+      return { category, inferred: true, score: 1 };
     }
   }
 
-  return { category: best, inferred: true, score: bestScore };
+  return { category: "other", inferred: true, score: 0 };
 }

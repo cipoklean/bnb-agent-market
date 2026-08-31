@@ -13,11 +13,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@altananetwork/sdk": "^0.8.0",
     "lucide-react": "^0.451.0",
     "next": "^14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.0",
+    "server-only": "^0.0.1",
     "viem": "^2.56.0",
     "zod": "^4.5.4",
     "zustand": "^4.5.5"

@@ -47,7 +47,10 @@ export default function MarketClient({
   const { submittedAgents } = useMarket();
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [sort, setSort] = useState<SortKey>("feedbacks");
+  // Default sort = highest 8004scan score (rubric: data quality beyond basic
+  // counts). Feedback/score ties fall back to the newest agent id so the
+  // directory top is always a meaningful, stable ranking.
+  const [sort, setSort] = useState<SortKey>("score");
   const [cat, setCat] = useState<CatFilter>(initialCategory ?? "all");
 
   // Extra pages loaded on demand via "Load more" (paginated /api/directory).
@@ -165,9 +168,22 @@ export default function MarketClient({
         return false;
       return true;
     });
-    if (sort === "score") list = [...list].sort((a, b) => (b.totalScore ?? -1) - (a.totalScore ?? -1));
-    if (sort === "feedbacks") list = [...list].sort((a, b) => b.totalFeedbacks - a.totalFeedbacks);
-    if (sort === "fresh") list = [...list].sort((a, b) => a.totalFeedbacks - b.totalFeedbacks);
+    if (sort === "score")
+      list = [...list].sort(
+        (a, b) =>
+          (b.totalScore ?? -1) - (a.totalScore ?? -1) ||
+          b.totalFeedbacks - a.totalFeedbacks ||
+          Number(b.tokenId || 0) - Number(a.tokenId || 0)
+      );
+    if (sort === "feedbacks")
+      list = [...list].sort(
+        (a, b) =>
+          b.totalFeedbacks - a.totalFeedbacks ||
+          (b.totalScore ?? -1) - (a.totalScore ?? -1) ||
+          Number(b.tokenId || 0) - Number(a.tokenId || 0)
+      );
+    if (sort === "fresh")
+      list = [...list].sort((a, b) => a.totalFeedbacks - b.totalFeedbacks);
     return list;
   }, [views, query, filter, sort, cat]);
 
@@ -178,9 +194,9 @@ export default function MarketClient({
     ...(counts["other"] ? [{ key: "other" as CatFilter, label: CATEGORY_META.other.short }] : []),
   ];
 
-  const filters: { key: Filter; label: string }[] = [
+  const filters: { key: Filter; label: string; prominent?: boolean }[] = [
     { key: "all", label: "All" },
-    { key: "x402", label: "x402-supported" },
+    { key: "x402", label: "⚡ x402 payments", prominent: true },
     { key: "verified", label: "Verified" },
   ];
 
@@ -282,8 +298,12 @@ export default function MarketClient({
               onClick={() => setFilter(f.key)}
               className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
                 filter === f.key
-                  ? "bg-primary/12 text-primary"
-                  : "border border-border bg-surface-2/40 text-muted hover:text-text"
+                  ? f.prominent
+                    ? "bg-warning/20 text-warning border border-warning/40"
+                    : "bg-primary/12 text-primary"
+                  : f.prominent
+                    ? "border border-warning/30 bg-warning/8 text-warning hover:bg-warning/15"
+                    : "border border-border bg-surface-2/40 text-muted hover:text-text"
               }`}
             >
               {f.label}
@@ -295,8 +315,8 @@ export default function MarketClient({
             onChange={(e) => setSort(e.target.value as SortKey)}
             aria-label="Sort directory"
           >
-            <option value="feedbacks">Sort: most feedback</option>
             <option value="score">Sort: highest score</option>
+            <option value="feedbacks">Sort: most feedback</option>
             <option value="fresh">Sort: newest / least feedback</option>
           </select>
         </div>

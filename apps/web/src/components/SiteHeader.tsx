@@ -12,6 +12,7 @@ const NAV = [
   { href: "/alphadesk", label: "AlphaDesk" },
   { href: "/taskchain", label: "TaskChain" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/altana-sessions", label: "Altana Sessions" },
   { href: "/memory", label: "Memory" },
   { href: "/evidence", label: "Evidence" },
   { href: "/submit", label: "Submit" },
