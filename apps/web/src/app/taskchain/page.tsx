@@ -14,7 +14,7 @@ import {
 import MarketClient from "@/components/MarketClient";
 import { PanelGlass, SectionTitle } from "@/components/ui";
 import { getDirectory } from "@/lib/directory-cache";
-import { normalizeScanEntry } from "@/lib/scan-normalize";
+import { normalizeScanEntry, dedupeAndOrder } from "@/lib/scan-normalize";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ const TEMPLATES = [
 
 export default async function TaskChainPage() {
   const dir = await getDirectory({ chainId: 56, limit: 24 });
-  const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
+  const live = dedupeAndOrder(dir.agents.map((raw) => normalizeScanEntry(raw, 56)));
 
   return (
     <div className="flex flex-col gap-10">

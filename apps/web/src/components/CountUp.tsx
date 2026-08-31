@@ -15,13 +15,16 @@ export default function CountUp({
 }) {
   const [value, setValue] = useState(0);
   const raf = useRef<number | null>(null);
+  // Clamp: never animate or render a negative count (a bad upstream total
+  // once rendered "-5,338,596"). Values are live indexer numbers only.
+  const target = Math.max(0, Math.round(to));
 
   useEffect(() => {
     const reduce =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || to <= 0) {
-      setValue(to);
+    if (reduce || target <= 0) {
+      setValue(target);
       return;
     }
     const start = performance.now();
@@ -29,14 +32,14 @@ export default function CountUp({
       const t = Math.min(1, (now - start) / durationMs);
       // easeOutExpo for a snappy settle.
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-      setValue(Math.round(to * eased));
+      setValue(Math.round(target * eased));
       if (t < 1) raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
     };
-  }, [to, durationMs]);
+  }, [target, durationMs]);
 
   return <span className={className}>{value.toLocaleString()}</span>;
 }

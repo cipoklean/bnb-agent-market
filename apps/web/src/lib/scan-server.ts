@@ -155,10 +155,13 @@ export async function listAgents({
       `${BASE_URL}/agents?chainId=${chainId}&limit=${clamped}`
     )) as { success?: boolean; data?: unknown; meta?: { pagination?: { total?: number } } };
     const data = Array.isArray(env?.data) ? (env.data as Record<string, unknown>[]) : [];
-    const total = Number(env?.meta?.pagination?.total ?? data.length);
+    const rawTotal = Number(env?.meta?.pagination?.total ?? data.length);
+    // Sanitize: a malformed upstream total must never surface as a negative
+    // counter (e.g. "-5,338,596"). Fall back to the page length we actually got.
+    const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : data.length;
     const value: DirectoryResult = {
       agents: data,
-      total: Number.isFinite(total) ? total : data.length,
+      total,
       degraded: false,
       fetchedAt: new Date().toISOString(),
     };

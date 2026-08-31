@@ -15,6 +15,7 @@ import {
   normalizeScanEntry,
   parseCanonicalId,
   viewFromSubmission,
+  dedupeAndOrder,
 } from "@/lib/scan-normalize";
 import { CATEGORY_META, CORE_CATEGORIES, type AgentCategory } from "@/lib/categories";
 import type { DirectorySource } from "@/lib/directory-cache";
@@ -62,16 +63,14 @@ export default function MarketClient({
   const [lookupState, setLookupState] = useState<"idle" | "searching" | "notfound">("idle");
 
   const views = useMemo<LiveAgentView[]>(() => {
-    const bySlug = new Map<string, LiveAgentView>();
-    for (const v of [
+    // Dedupe by slug + canonical order (feedbacks desc, score desc, tokenId asc)
+    // so the default listing shows the most-attested agents at the top.
+    return dedupeAndOrder([
       ...live,
       ...extra,
       ...Object.values(liveHits),
       ...submittedAgents.map(viewFromSubmission),
-    ]) {
-      if (!bySlug.has(v.slug)) bySlug.set(v.slug, v);
-    }
-    return Array.from(bySlug.values());
+    ]);
   }, [live, extra, liveHits, submittedAgents]);
 
   // Detect a token-id or canonical-id in the query, resolve it live if we don't
@@ -246,7 +245,9 @@ export default function MarketClient({
           </p>
         )}
 
-        {/* Category navigation — the four first-class BNB Agent Studio categories. */}
+        {/* Category navigation — the four first-class BNB Agent Studio categories.
+            Categories are keyword-heuristics over name/description metadata, NOT
+            on-chain fields — labeled as such for judges. */}
         <div className="flex flex-wrap items-center gap-2">
           {catChips.map((c) => (
             <button
@@ -262,6 +263,9 @@ export default function MarketClient({
               <span className="tnum text-[11px] opacity-70">{counts[c.key] ?? 0}</span>
             </button>
           ))}
+          <span className="text-[11px] text-muted/60 italic">
+            heuristic category — inferred from agent metadata, not on-chain
+          </span>
         </div>
         {cat !== "all" && (
           <p className="caption -mt-1">

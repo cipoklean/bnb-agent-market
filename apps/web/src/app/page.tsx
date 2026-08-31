@@ -21,7 +21,10 @@ import CountUp from "@/components/CountUp";
 import { PanelGlass, SectionTitle } from "@/components/ui";
 import { getDirectory } from "@/lib/directory-cache";
 import { timeAgo } from "@/lib/format";
-import { normalizeScanEntry } from "@/lib/scan-normalize";
+import {
+  normalizeScanEntry,
+  dedupeAndOrder,
+} from "@/lib/scan-normalize";
 
 export const dynamic = "force-dynamic";
 
@@ -55,10 +58,10 @@ const TRUST = [
 
 export default async function HomePage() {
   const dir = await getDirectory({ chainId: 56, limit: 24 });
-  const live = dir.agents.map((raw) => normalizeScanEntry(raw, 56));
-  const featured = [...live]
-    .sort((a, b) => b.totalFeedbacks - a.totalFeedbacks)
-    .slice(0, 3);
+  // Dedupe + canonical order (feedbacks desc, score desc) before any slicing
+  // so "featured" is genuinely the most-attested agents in the directory.
+  const live = dedupeAndOrder(dir.agents.map((raw) => normalizeScanEntry(raw, 56)));
+  const featured = live.slice(0, 3);
 
   return (
     <div className="flex flex-col gap-14">

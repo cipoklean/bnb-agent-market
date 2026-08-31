@@ -116,6 +116,26 @@ export function scanUrlFor(view: Pick<LiveAgentView, "chainId" | "tokenId">): st
   return `https://8004scan.io/agents/${chain}/${view.tokenId}`;
 }
 
+/**
+ * Canonical directory order: the most-attested agents first —
+ * totalFeedbacks DESC, then totalScore DESC, then tokenId ASC (numerically)
+ * as a stable tiebreaker so the list never jitters between renders.
+ */
+export function directoryOrder(a: LiveAgentView, b: LiveAgentView): number {
+  if (a.totalFeedbacks !== b.totalFeedbacks) return b.totalFeedbacks - a.totalFeedbacks;
+  const sa = a.totalScore ?? -1;
+  const sb = b.totalScore ?? -1;
+  if (sa !== sb) return sb - sa;
+  return Number(a.tokenId || 0) - Number(b.tokenId || 0);
+}
+
+/** Deduplicate directory views by slug and return them in canonical order. */
+export function dedupeAndOrder(views: LiveAgentView[]): LiveAgentView[] {
+  const bySlug = new Map<string, LiveAgentView>();
+  for (const v of views) if (!bySlug.has(v.slug)) bySlug.set(v.slug, v);
+  return Array.from(bySlug.values()).sort(directoryOrder);
+}
+
 export const GENERIC_CAPABILITY: Capability = {
   id: "cap-custom",
   name: "Custom session task — you set the terms",

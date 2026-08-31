@@ -68,13 +68,13 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     description: "Places and manages automated grid orders within a range.",
     icon: "Grid3x3",
     keywords: [
+      "grid",
       "grid trading",
       "grid bot",
       "grid strategy",
       "grid order",
       "trading grid",
       "dca grid",
-      " grid ",
     ],
   },
   yield: {
@@ -109,6 +109,7 @@ export const CATEGORY_META: Record<AgentCategory, CategoryMeta> = {
     icon: "HeartPulse",
     keywords: [
       "health factor",
+      "liquidat",
       "liquidation",
       "liquidate",
       "collateral",
