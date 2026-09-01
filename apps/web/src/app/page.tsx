@@ -24,7 +24,7 @@ import ScanAgentCard from "@/components/ScanAgentCard";
 import CountUp from "@/components/CountUp";
 import HeroSearch from "@/components/HeroSearch";
 import { PanelGlass, SectionTitle } from "@/components/ui";
-import { getDirectory } from "@/lib/directory-cache";
+import { getDeepDirectory } from "@/lib/directory-cache";
 import { timeAgo } from "@/lib/format";
 import { normalizeScanEntry, dedupeAndOrder } from "@/lib/scan-normalize";
 import { CATEGORY_META, CORE_CATEGORIES, type AgentCategory } from "@/lib/categories";
@@ -67,14 +67,16 @@ const TRUST = [
 ];
 
 export default async function HomePage() {
-  // 100 = the 8004scan API's page maximum: tile counts see a real slice of
-  // the directory, not just the newest 24. getDirectory's TTL (5 min) means
-  // this stays a single upstream call per burst.
-  const dir = await getDirectory({ chainId: 56, limit: 100 });
+  // DEEP SCAN: ~500 newest agents in one parallel pass (5×100 pages) so the
+  // pillar tiles count real examples of all four categories — a genuine v3
+  // rebalancer sits ~500 deep and a single shallow page misses it. Cached
+  // 5 min with single-flight; a cold render waits at most ~4s, then falls
+  // back to the shallow window (marked partial) while the scan finishes.
+  const dir = await getDeepDirectory({ chainId: 56 });
   const live = dedupeAndOrder(dir.agents.map((raw) => normalizeScanEntry(raw, 56)));
   const top = live.slice(0, 3);
 
-  // LIVE per-category counts from the fetched directory window.
+  // LIVE per-category counts from the deep window.
   const counts: Record<string, number> = { all: live.length };
   for (const v of live) counts[v.category] = (counts[v.category] ?? 0) + 1;
 
@@ -120,9 +122,10 @@ export default async function HomePage() {
                 </span>
                 <span className="caption ml-1.5">listed in this directory</span>
               </div>
-              {dir.stale && (
+              {dir.partial && (
                 <p className="flex items-center gap-1.5 text-[12px] text-warning">
-                  <Clock size={13} /> Cached — fetched {dir.fetchedAt ? timeAgo(dir.fetchedAt) : "recently"}.
+                  <Clock size={13} /> Pillar counts cover the newest 100 agents —
+                  the full ~500-agent deep scan lands shortly.
                 </p>
               )}
             </div>
@@ -171,6 +174,12 @@ export default async function HomePage() {
           other indexed agent{(counts["other"] ?? 0) === 1 ? "" : "s"} in this window —
           browse them
         </Link>
+        {dir.partial && (
+          <p className="caption mt-1.5 text-warning">
+            Deep scan still warming — counts cover the newest 100 agents; the full
+            ~500-agent window lands within a few seconds.
+          </p>
+        )}
       </section>
 
       {/* TOP AGENTS RIGHT NOW — score-ordered live strip */}

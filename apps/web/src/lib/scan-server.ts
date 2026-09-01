@@ -228,3 +228,91 @@ export async function browseAgents({
     };
   }
 }
+
+// ---- DEEP SCAN (pillar counts) ----
+
+export interface DeepScanResult {
+  /** Deduped agents from the first PAGES pages (newest first). */
+  agents: Record<string, unknown>[];
+  /** Indexer total for the chain (same as listAgents.total). */
+  total: number;
+  degraded: boolean;
+  /** How many directory pages were actually fetched. */
+  pagesFetched: number;
+  fetchedAt: string;
+}
+
+const DEEP_PAGES = 5; // 5 × 100 = ~500 newest agents, one pass
+const DEEP_PAGE_LIMIT = 100; // API page max
+
+/**
+ * DEEP SCAN — fetch the first DEEP_PAGES pages of the directory in ONE
+ * parallel pass (~500 newest agents) so the landing-page pillar tiles
+ * count real, deep examples of all four categories (a real v3-rebalancer
+ * like "Warden" sits ~500 deep; a single shallow page misses it).
+ *
+ * Cost model (verified against the live API 2026-08-31):
+ *   - 5 requests, fired in parallel — ~700ms wall-clock when the indexer
+ *     is healthy, worst case bounded by the per-IP timeout.
+ *   - Per-page resilience: a page that fails (timeout / rate limit / HTTP
+ *     error) is simply skipped; the scan succeeds with the pages that did
+ *     land (>= 1 page = success). A deep 0-rate-limit upstream still pays
+ *     off: partial windows beat single-page windows.
+ *   - NEVER throws. Returns degraded:true only when every page failed.
+ *
+ * The caller (directory-cache getDeepDirectory) adds a 5-minute TTL +
+ * single-flight so a page burst costs ZERO extra upstream requests.
+ */
+export async function deepScanAgents({
+  chainId = 56,
+  pages = DEEP_PAGES,
+}: { chainId?: number; pages?: number } = {}): Promise<DeepScanResult> {
+  if (process.env.SCAN_FORCE_FAIL === "1") {
+    return {
+      agents: [], total: 0, degraded: true, pagesFetched: 0,
+      fetchedAt: new Date().toISOString(),
+    };
+  }
+  const pgCount = Math.min(Math.max(1, Math.floor(pages)), 10);
+  const fetched = await Promise.all(
+    Array.from({ length: pgCount }, (_, i) => i + 1).map(async (page) => {
+      try {
+        const env = (await scanHttpGet(
+          `${BASE_URL}/agents?chainId=${chainId}&limit=${DEEP_PAGE_LIMIT}&page=${page}`
+        )) as {
+          success?: boolean;
+          data?: unknown;
+          meta?: { pagination?: { total?: number } };
+        };
+        const data = Array.isArray(env?.data) ? (env.data as Record<string, unknown>[]) : [];
+        const rawTotal = Number(env?.meta?.pagination?.total ?? 0);
+        return { data, total: Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : 0 };
+      } catch {
+        return { data: [] as Record<string, unknown>[], total: 0 };
+      }
+    })
+  );
+
+  // Newest-first order preserved; dedupe by agent identity (the API can
+  // shift records between pages mid-scan — dedupe keeps counts honest).
+  const seen = new Set<string>();
+  const agents: Record<string, unknown>[] = [];
+  for (const page of fetched) {
+    for (const a of page.data) {
+      const key = String(a.agent_id ?? a.token_id ?? a.id ?? a.name);
+      if (key === "undefined" || seen.has(key)) continue;
+      seen.add(key);
+      agents.push(a);
+    }
+  }
+  const pagesFetched = fetched.filter((p) => p.data.length > 0).length;
+  const total = fetched.find((p) => p.total > 0)?.total ?? agents.length;
+
+  return {
+    agents,
+    total,
+    degraded: pagesFetched === 0,
+    pagesFetched,
+    fetchedAt: new Date().toISOString(),
+  };
+}
