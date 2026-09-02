@@ -7,7 +7,6 @@ import {
   Activity,
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   BarChart3,
   Check,
   ExternalLink,
@@ -26,6 +25,7 @@ import {
   Tooltip,
   TrustNote,
 } from "@/components/ui";
+import { SigilDivider, SigilLive, SigilSeal } from "@/components/sigils";
 import TrustPanel from "@/components/TrustPanel";
 import RiskBadge from "@/components/RiskBadge";
 import {
@@ -156,18 +156,18 @@ export default function AgentProfilePage() {
         <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="badge-blue">{agent.category}</span>
+              <span className="badge-bronze">{agent.category}</span>
               <Tooltip label="On-chain proof of this agent's history.">
                 <span className="badge-gold !cursor-help">ERC-8004</span>
               </Tooltip>
               {agent.verified && (
                 <span className="badge-green">
-                  <Check size={12} /> Verified
+                  <SigilSeal size={12} className="text-success" /> Verified
                 </span>
               )}
               {agent.verifiedVia8004 && !agent.verified && (
                 <span className="badge-green">
-                  <Check size={12} /> Verified via 8004scan
+                  <SigilSeal size={12} className="text-success" /> Verified via 8004scan
                 </span>
               )}
               {liveProfile ? (
@@ -265,23 +265,23 @@ export default function AgentProfilePage() {
             />
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={agent.performance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#263043" />
-                <XAxis dataKey="label" stroke="#98A2B3" fontSize={12} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(169,114,12,0.35)" />
+                <XAxis dataKey="label" stroke="#B5A98E" fontSize={12} tickLine={false} />
                 <YAxis
                   domain={[0, 100]}
-                  stroke="#98A2B3"
+                  stroke="#B5A98E"
                   fontSize={12}
                   tickLine={false}
                   width={34}
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    background: "#121826",
-                    border: "1px solid #263043",
-                    borderRadius: 10,
+                    background: "#241C15",
+                    border: "1px solid rgba(169,114,12,0.5)",
+                    borderRadius: 3,
                     fontSize: 12,
                   }}
-                  labelStyle={{ color: "#F5F7FA" }}
+                  labelStyle={{ color: "#EDE3CC" }}
                 />
                 <Line
                   type="monotone"
@@ -360,10 +360,13 @@ export default function AgentProfilePage() {
               {agent.attestations.map((att) => (
                 <div
                   key={att.id}
-                  className="rounded-btn border border-border bg-surface-2/40 p-4"
+                  className="rounded-btn border border-border/60 bg-surface-2/40 p-4"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="badge-blue">{att.type.replace("_", " ")}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <SigilSeal size={13} className="text-bronze" />
+                      <span className="badge-bronze">{att.type.replace("_", " ")}</span>
+                    </span>
                     <span className="caption">{timeAgo(att.createdAt)}</span>
                   </div>
                   <p className="mt-2 text-[14px] text-text">{att.data}</p>
@@ -398,13 +401,17 @@ export default function AgentProfilePage() {
         {/* Right column */}
         <div className="flex flex-col gap-4">
           {scanMetrics && (
-            <Panel className="flex flex-col gap-3">
+            <Panel className="flex flex-col gap-3 border-gold/35">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="title-card">Live Mainnet Metrics</h3>
+                <h3 className="title-card inline-flex items-center gap-2">
+                  <SigilSeal size={15} className="text-gold" /> Live Mainnet
+                  Metrics
+                </h3>
                 <span className="badge-green">
-                  <Check size={12} /> Live Data via 8004scan API
+                  <SigilLive label="Live via 8004scan API" />
                 </span>
               </div>
+              <SigilDivider />
               <p className="body-sm">
                 Real indexer data for the on-chain agent{" "}
                 <span className="hash">{scanMetrics.agentId}</span> — not a demo.
@@ -475,7 +482,7 @@ export default function AgentProfilePage() {
                 and instant revocation. The primary way in is the Hire button up top.
               </p>
               <Link href={`/hire?agent=${agent.id}`} className="btn-ghost mt-1">
-                <ArrowRight size={14} /> Start a session
+                Start a session
               </Link>
             </Panel>
           )}

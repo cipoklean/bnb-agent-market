@@ -9,6 +9,7 @@ import { AlertTriangle, Clock, Loader2, Plus, Search } from "lucide-react";
 import ScanAgentCard from "@/components/ScanAgentCard";
 import CompareBar from "@/components/CompareBar";
 import { EmptyState } from "@/components/ui";
+import { SigilLive, SigilSep } from "@/components/sigils";
 import { useMarket } from "@/lib/store";
 import { timeAgo } from "@/lib/format";
 import {
@@ -227,16 +228,22 @@ export default function MarketClient({
           <p className="body-sm">
             {!degraded && !stale && source === "live" && (
               <span className="mr-2 inline-flex items-center gap-1.5 text-[12px] text-muted">
-                <span className="dot dot-green" /> live
+                <SigilLive label="live" />
               </span>
             )}
             <span className="tnum font-semibold text-text">{views.length}</span>{" "}
-            listed in this directory ·{" "}
+            listed in this directory
+            <SigilSep />
             <span className="tnum font-semibold text-text">
               {total.toLocaleString()}
             </span>{" "}
             agents indexed on BSC
-            {note ? ` · ${note}` : ""}
+            {note ? (
+              <>
+                <SigilSep />
+                {note}
+              </>
+            ) : null}
           </p>
           <Link href="/submit" className="btn-ghost btn-sm">
             <Plus size={13} /> Submit an agent
@@ -271,10 +278,10 @@ export default function MarketClient({
             <button
               key={c.key}
               onClick={() => setCat(c.key)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
+              className={`inline-flex items-center gap-1.5 rounded-btn px-3 py-1.5 text-[13px] font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-gold/70 ${
                 cat === c.key
-                  ? "bg-primary/15 text-primary"
-                  : "border border-border bg-surface-2/40 text-muted hover:text-text"
+                  ? "border border-gold/50 bg-gold/15 text-gold"
+                  : "border border-border/60 bg-surface-2/40 text-muted hover:border-gold/50 hover:text-text"
               }`}
             >
               {c.label}
@@ -289,7 +296,7 @@ export default function MarketClient({
           <p className="caption -mt-1">
             {CATEGORY_META[cat].description}{" "}
             <span className="text-muted/70">
-              · category inferred from agent metadata, not an on-chain field.
+              — category inferred from agent metadata, not an on-chain field.
             </span>
           </p>
         )}
@@ -298,14 +305,14 @@ export default function MarketClient({
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
+              className={`rounded-btn px-3 py-1.5 text-[13px] font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-gold/70 ${
                 filter === f.key
                   ? f.prominent
-                    ? "bg-warning/20 text-warning border border-warning/40"
-                    : "bg-primary/12 text-primary"
+                    ? "bg-ember/20 text-warning border border-ember/40"
+                    : "border border-gold/45 bg-gold/12 text-gold"
                   : f.prominent
-                    ? "border border-warning/30 bg-warning/8 text-warning hover:bg-warning/15"
-                    : "border border-border bg-surface-2/40 text-muted hover:text-text"
+                    ? "border border-ember/35 bg-ember/10 text-warning hover:bg-ember/18"
+                    : "border border-border/60 bg-surface-2/40 text-muted hover:border-gold/50 hover:text-text"
               }`}
             >
               {f.label}
@@ -355,7 +362,8 @@ export default function MarketClient({
           >
             {loadingMore ? (
               <>
-                <Loader2 size={13} className="animate-spin" /> Loading…
+                <Loader2 size={13} className="animate-spin" /> The ledger is
+                still being inscribed…
               </>
             ) : (
               <>Load more agents</>

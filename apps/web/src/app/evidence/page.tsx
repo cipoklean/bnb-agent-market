@@ -30,10 +30,10 @@ const DEMO_SCRIPT = [
 
 const PARTNER_CLS: Record<string, string> = {
   TermiX: "badge-gold",
-  PancakeSwap: "badge-blue",
+  PancakeSwap: "badge-bronze",
   Altana: "badge-green",
   "ERC-8004": "badge-gold",
-  x402: "badge-blue",
+  x402: "badge-bronze",
   Memory: "badge-gray",
 };
 

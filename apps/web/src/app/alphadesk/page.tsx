@@ -5,7 +5,6 @@
 import Link from "next/link";
 import {
   ArrowLeft,
-  ArrowRight,
   Clock,
   FileText,
   Lock,
@@ -52,7 +51,7 @@ export default async function AlphaDeskPage() {
           terms, bounded by your limits, and stoppable in one click.
         </p>
         <Link href="/marketplace" className="btn-primary mt-6">
-          Browse the live directory <ArrowRight size={15} />
+          Browse the live directory
         </Link>
       </section>
 

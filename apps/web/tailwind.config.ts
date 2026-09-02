@@ -1,44 +1,59 @@
 import type { Config } from "tailwindcss";
 
+// The Gilded Grimoire — obsidian & candlelight. Legacy class names (bg,
+// surface, text, primary, …) are aliases onto the grimoire tokens so every
+// existing surface reskins centrally; the named tokens (ink, umber, gold,
+// bronze, verdigris, ember, brass) are the canonical palette.
 const config: Config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   theme: {
     extend: {
       colors: {
-        bg: "#0B0E14",
-        surface: "#121826",
-        "surface-2": "#1A2233",
-        border: "#263043",
-        text: "#F5F7FA",
-        muted: "#98A2B3",
-        primary: "#F0B90B",
-        "primary-contrast": "#0B0E14",
+        // canonical tokens
+        ink: "#100D0A",
+        umber: "#241C15",
+        parchment: "#EDE3CC",
         gold: "#F0B90B",
-        amber: "#F59E0B",
-        success: "#2EBD85",
-        warning: "#F59E0B",
-        danger: "#EF4444",
-        info: "#6C8CFF",
+        bronze: "#A9720C",
+        verdigris: "#4E8C6E",
+        ember: "#B84A2E",
+        brass: "#C89B55",
+        // legacy aliases (used across the app)
+        bg: "#100D0A",
+        surface: "#241C15",
+        "surface-2": "#2C221A",
+        border: "#A9720C",
+        text: "#EDE3CC",
+        muted: "#B5A98E",
+        primary: "#F0B90B",
+        "primary-contrast": "#100D0A",
+        amber: "#E0855F",
+        // text-safe tints (small text stays WCAG AA on umber/ink)
+        success: "#5FA07E",
+        warning: "#E0855F",
+        danger: "#E0855F",
+        info: "#C89B55",
       },
       fontFamily: {
-        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
+        sans: ["var(--font-sans)", "IBM Plex Sans", "system-ui", "sans-serif"],
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
+        display: ["var(--font-display)", "Georgia", "serif"],
       },
       opacity: {
         8: "0.08",
         12: "0.12",
       },
       borderRadius: {
-        card: "16px",
-        btn: "10px",
-        input: "10px",
+        card: "4px",
+        btn: "3px",
+        input: "3px",
       },
       boxShadow: {
-        panel: "0 12px 40px -12px rgba(0,0,0,0.55)",
-        "panel-soft": "0 4px 20px -8px rgba(0,0,0,0.4)",
-        glow: "0 0 0 1px rgba(240,185,11,0.25), 0 0 24px -6px rgba(240,185,11,0.35)",
+        panel: "0 0 0 1px rgba(169,114,12,0.18), 0 12px 32px -20px rgba(0,0,0,0.9)",
+        "panel-soft": "0 0 0 1px rgba(169,114,12,0.14)",
+        glow: "0 0 0 1px rgba(240,185,11,0.22), 0 0 18px -6px rgba(240,185,11,0.3)",
         "glow-lg":
-          "0 0 0 1px rgba(240,185,11,0.30), 0 24px 80px -20px rgba(240,185,11,0.35), 0 8px 40px -12px rgba(0,0,0,0.6)",
+          "0 0 0 1px rgba(240,185,11,0.28), 0 18px 60px -24px rgba(240,185,11,0.3)",
       },
       keyframes: {
         "fade-in-up": {
@@ -49,31 +64,10 @@ const config: Config = {
           from: { transform: "translateX(100%)" },
           to: { transform: "translateX(0)" },
         },
-        aurora: {
-          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.55" },
-          "33%": { transform: "translate(6%, -8%) scale(1.15)", opacity: "0.8" },
-          "66%": { transform: "translate(-6%, 6%) scale(0.95)", opacity: "0.5" },
-        },
-        float: {
-          "0%, 100%": { transform: "translateY(0)" },
-          "50%": { transform: "translateY(-8px)" },
-        },
-        "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(240,185,11,0.0)" },
-          "50%": { boxShadow: "0 0 0 6px rgba(240,185,11,0.10)" },
-        },
-        shimmer: {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
-        },
       },
       animation: {
         "fade-in-up": "fade-in-up .35s ease-out both",
         "slide-in-right": "slide-in-right .25s ease-out both",
-        aurora: "aurora 14s ease-in-out infinite",
-        float: "float 6s ease-in-out infinite",
-        "pulse-glow": "pulse-glow 3s ease-in-out infinite",
-        shimmer: "shimmer 6s linear infinite",
       },
     },
   },

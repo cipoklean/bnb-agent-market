@@ -81,8 +81,8 @@ export function ProgressBar({
   const color =
     tone === "green" ? "bg-success" : tone === "red" ? "bg-danger" : tone === "blue" ? "bg-info" : "bg-primary";
   return (
-    <div className="h-1.5 w-full rounded-full bg-surface-2 overflow-hidden">
-      <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="h-1.5 w-full rounded-[2px] bg-surface-2 overflow-hidden">
+      <div className={`h-full rounded-[2px] ${color}`} style={{ width: `${pct}%` }} />
     </div>
   );
 }
@@ -114,7 +114,7 @@ export function Tooltip({ label, children }: { label: string; children: ReactNod
   return (
     <span className="group relative inline-block">
       {children}
-      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-56 -translate-x-1/2 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[12px] leading-snug text-text opacity-0 shadow-panel transition-opacity duration-150 group-hover:opacity-100">
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1.5 w-56 -translate-x-1/2 rounded-[3px] border border-border/70 bg-surface-2 px-3 py-2 text-[12px] leading-snug text-text opacity-0 shadow-panel transition-opacity duration-150 group-hover:opacity-100">
         {label}
       </span>
     </span>
@@ -134,7 +134,7 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-card border border-dashed border-border bg-surface/40 px-6 py-14 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-muted">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[4px] border border-bronze/40 bg-surface-2 text-muted">
         {icon}
       </div>
       <div className="title-card">{title}</div>

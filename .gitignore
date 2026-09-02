@@ -21,6 +21,9 @@ cache/
 # vercel link artifacts (local project mapping; never committed)
 .vercel/
 
+# hoplite sandbox/preview config (local; never committed)
+.hoplite/
+
 # memory snapshots (timestamped) stay local unless you want them tracked
 memory/snapshots/
 

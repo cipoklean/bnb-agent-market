@@ -113,7 +113,7 @@ export default function AgentAdvantageReportPage() {
     d === "Trading" ? (
       <span className="badge-gold !text-[10px]">Trading</span>
     ) : d === "Security" ? (
-      <span className="badge-blue !text-[10px]">Security</span>
+      <span className="badge-bronze !text-[10px]">Security</span>
     ) : (
       <span className="badge-gray !text-[10px]">Productivity</span>
     );
@@ -183,7 +183,7 @@ export default function AgentAdvantageReportPage() {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[860px] text-[13px]">
             <thead>
-              <tr className="border-b border-border text-left text-[12px] uppercase tracking-wide text-muted">
+              <tr className="border-b border-border text-left text-[12px] tracking-wide text-muted">
                 <th className="pb-2 pr-3">Task</th>
                 <th className="pb-2 pr-3">Domain</th>
                 <th className="pb-2 pr-3">Manual min</th>

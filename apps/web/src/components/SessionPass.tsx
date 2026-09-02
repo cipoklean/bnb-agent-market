@@ -14,7 +14,7 @@ export const SESSION_STATUS_META: Record<
   SessionStatus,
   { cls: string; dot: string; label: string }
 > = {
-  draft: { cls: "badge-blue", dot: "dot-blue", label: "Draft" },
+  draft: { cls: "badge-bronze", dot: "dot-blue", label: "Draft" },
   pending_confirmation: {
     cls: "badge-amber",
     dot: "dot-amber",
@@ -22,7 +22,7 @@ export const SESSION_STATUS_META: Record<
   },
   active: { cls: "badge-green", dot: "dot-green", label: "Active" },
   paused: { cls: "badge-gray", dot: "dot-blue", label: "Paused" },
-  completed: { cls: "badge-blue", dot: "dot-blue", label: "Completed" },
+  completed: { cls: "badge-bronze", dot: "dot-blue", label: "Completed" },
   revoked: { cls: "badge-red", dot: "dot-red", label: "Stopped" },
   expired: { cls: "badge-gray", dot: "dot-amber", label: "Expired" },
 };

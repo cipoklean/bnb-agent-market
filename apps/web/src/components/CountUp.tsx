@@ -1,7 +1,9 @@
 "use client";
 // Count-up animation for the hero's LIVE stats. The target is real indexer data
 // passed from the server component — the animation only affects presentation,
-// never the value. Honors prefers-reduced-motion (renders the final number).
+// never the value. Honors prefers-reduced-motion (renders the final number,
+// no glow). After the count lands, a one-shot gold "settle" glow plays once
+// and stops — the page's single orchestrated load moment.
 import { useEffect, useRef, useState } from "react";
 
 export default function CountUp({
@@ -14,7 +16,9 @@ export default function CountUp({
   className?: string;
 }) {
   const [value, setValue] = useState(0);
+  const [settling, setSettling] = useState(false);
   const raf = useRef<number | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Clamp: never animate or render a negative count (a bad upstream total
   // once rendered "-5,338,596"). Values are live indexer numbers only.
   const target = Math.max(0, Math.round(to));
@@ -33,13 +37,24 @@ export default function CountUp({
       // easeOutExpo for a snappy settle.
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
       setValue(Math.round(target * eased));
-      if (t < 1) raf.current = requestAnimationFrame(tick);
+      if (t < 1) {
+        raf.current = requestAnimationFrame(tick);
+      } else {
+        // Count done — one brief gold glow, then it stops for good.
+        setSettling(true);
+        settleTimer.current = setTimeout(() => setSettling(false), 1500);
+      }
     };
     raf.current = requestAnimationFrame(tick);
     return () => {
       if (raf.current) cancelAnimationFrame(raf.current);
+      if (settleTimer.current) clearTimeout(settleTimer.current);
     };
   }, [target, durationMs]);
 
-  return <span className={className}>{value.toLocaleString()}</span>;
+  return (
+    <span className={`${className} ${settling ? "counter-settle" : ""}`}>
+      {value.toLocaleString()}
+    </span>
+  );
 }

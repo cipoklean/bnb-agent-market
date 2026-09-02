@@ -5,25 +5,26 @@
 // directory via getDirectory — nothing invented.
 import Link from "next/link";
 import {
-  ArrowRight,
   Check,
   Clock,
   Eye,
-  Grid3x3,
-  HeartPulse,
   PenLine,
-  Scale,
   Search,
   Settings,
   Shield,
   StopCircle,
-  TrendingUp,
   Zap,
 } from "lucide-react";
 import ScanAgentCard from "@/components/ScanAgentCard";
 import CountUp from "@/components/CountUp";
 import HeroSearch from "@/components/HeroSearch";
 import { PanelGlass, SectionTitle } from "@/components/ui";
+import {
+  SigilGrid,
+  SigilHealth,
+  SigilRebalance,
+  SigilYield,
+} from "@/components/sigils";
 import { getDeepDirectory } from "@/lib/directory-cache";
 import { timeAgo } from "@/lib/format";
 import { normalizeScanEntry, dedupeAndOrder } from "@/lib/scan-normalize";
@@ -31,12 +32,13 @@ import { CATEGORY_META, CORE_CATEGORIES, type AgentCategory } from "@/lib/catego
 
 export const dynamic = "force-dynamic";
 
-const CATEGORY_ICONS: Record<AgentCategory, typeof Scale> = {
-  rebalancing: Scale,
-  "grid-trading": Grid3x3,
-  yield: TrendingUp,
-  "health-factor": HeartPulse,
-  other: Search,
+// One sigil per pillar — the grimoire marks for the four categories.
+const CATEGORY_SIGILS: Record<AgentCategory, typeof SigilRebalance> = {
+  rebalancing: SigilRebalance,
+  "grid-trading": SigilGrid,
+  yield: SigilYield,
+  "health-factor": SigilHealth,
+  other: SigilGrid,
 };
 
 const STEPS = [
@@ -86,17 +88,16 @@ export default async function HomePage() {
       <section className="relative overflow-hidden rounded-card border border-border/60 bg-surface/30 px-5 py-14 sm:px-10 sm:py-20">
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute inset-0 hero-grid opacity-70" />
-          <div className="aurora-blob -left-10 -top-16 h-72 w-72 bg-primary/25" />
-          <div className="aurora-blob -right-6 top-6 h-80 w-80 bg-info/20" style={{ animationDelay: "-6s" }} />
+          <div className="candle-glow -left-10 -top-16 h-72 w-72" />
+          <div className="candle-glow -right-6 top-6 h-80 w-80" />
         </div>
 
         <div className="flex flex-col items-start text-left">
-          <div className="badge-gold mb-6 animate-pulse-glow">
+          <div className="badge-gold mb-6">
             BNB Smart Chain · ERC-8004 identity · x402 payments
           </div>
-          <h1 className="max-w-3xl text-[36px] font-bold leading-[1.06] tracking-tight text-text sm:text-[52px]">
-            Find, compare and hire{" "}
-            <span className="text-gradient-gold">verified AI agents</span> on BNB Chain
+          <h1 className="font-display max-w-3xl text-[36px] font-semibold leading-[1.08] tracking-tight text-text sm:text-[50px]">
+            Find, compare and hire verified AI agents on BNB Chain
           </h1>
           <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-muted">
             Live scores from 8004scan, spend-capped sessions you sign yourself,
@@ -110,14 +111,14 @@ export default async function HomePage() {
             <div className="mt-8 badge-amber">Indexer unreachable — directory paused</div>
           ) : (
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <div className="rounded-btn border border-border bg-surface-2/50 px-4 py-2.5">
-                <span className="tnum text-[22px] font-bold text-primary">
+              <div className="rounded-btn border border-border/70 bg-surface-2/50 px-4 py-2.5">
+                <span className="tnum text-[24px] font-bold text-gold">
                   <CountUp to={dir.total} />
                 </span>
                 <span className="caption ml-1.5">agents indexed on BSC</span>
               </div>
-              <div className="rounded-btn border border-border bg-surface-2/50 px-4 py-2.5">
-                <span className="tnum text-[22px] font-bold text-text">
+              <div className="rounded-btn border border-border/70 bg-surface-2/50 px-4 py-2.5">
+                <span className="tnum text-[24px] font-bold text-gold">
                   <CountUp to={live.length} />
                 </span>
                 <span className="caption ml-1.5">listed in this directory</span>
@@ -133,31 +134,32 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* FOUR PILLAR TILES — live counts, click-through filters */}
+      {/* FOUR PILLAR TILES — grimoire entries: umber panel, hairline frame,
+          the category sigil, live count. Equal visual weight by design. */}
       <section>
         <SectionTitle
           title="The four pillars"
-          sub="Every category, equally deep — counts are live from the directory right now."
+          sub="Every entry, equally deep — counts are live from the directory right now."
         />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {CORE_CATEGORIES.map((c) => {
-            const Icon = CATEGORY_ICONS[c];
+            const Sigil = CATEGORY_SIGILS[c];
             const meta = CATEGORY_META[c];
             return (
               <Link
                 key={c}
                 href={`/marketplace?category=${c}`}
-                className="group flex flex-col gap-3 rounded-card border border-border bg-surface/40 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-glow"
+                className="group flex flex-col gap-3 rounded-card border border-border/70 bg-surface/40 p-5 transition-colors duration-200 hover:border-gold/60"
               >
-                <span className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-primary/30 bg-primary/10 transition-colors group-hover:bg-primary/15">
-                  <Icon size={20} className="text-primary" />
+                <span className="flex h-11 w-11 items-center justify-center rounded-[4px] border border-bronze/45 bg-gold/8 transition-colors group-hover:border-gold/60 group-hover:bg-gold/12">
+                  <Sigil size={21} className="text-gold" />
                 </span>
                 <div>
-                  <div className="text-[16px] font-semibold text-text">{meta.label}</div>
+                  <div className="font-display text-[16px] font-semibold text-text">{meta.label}</div>
                   <p className="caption mt-1">{meta.description}</p>
                 </div>
                 <div className="mt-auto flex items-baseline gap-1.5">
-                  <span className="tnum text-[24px] font-bold text-primary">{counts[c] ?? 0}</span>
+                  <span className="tnum text-[24px] font-bold text-gold">{counts[c] ?? 0}</span>
                   <span className="caption">agent{(counts[c] ?? 0) === 1 ? "" : "s"} live</span>
                 </div>
               </Link>
@@ -189,7 +191,7 @@ export default async function HomePage() {
           sub="Sorted by 8004scan score, then feedback — the most-attested agents first."
           right={
             <Link href="/marketplace" className="link text-[13px]">
-              View the full directory <ArrowRight size={12} className="inline" />
+              View the full directory
             </Link>
           }
         />
@@ -221,11 +223,11 @@ export default async function HomePage() {
         />
         <div className="grid gap-4 md:grid-cols-3">
           {STEPS.map((s) => (
-            <PanelGlass key={s.title} className="flex flex-col gap-3 stagger">
-              <span className="flex h-11 w-11 items-center justify-center rounded-[12px] border border-primary/30 bg-primary/10">
-                <s.icon size={19} className="text-primary" />
+            <PanelGlass key={s.title} className="flex flex-col gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-[4px] border border-bronze/45 bg-gold/8">
+                <s.icon size={19} className="text-gold" />
               </span>
-              <h3 className="text-[17px] font-semibold text-text">{s.title}</h3>
+              <h3 className="font-display text-[17px] font-semibold text-text">{s.title}</h3>
               <p className="body-sm">{s.body}</p>
             </PanelGlass>
           ))}
@@ -241,10 +243,10 @@ export default async function HomePage() {
         <div className="grid gap-4 md:grid-cols-3">
           {TRUST.map((t) => (
             <PanelGlass key={t.title} className="flex flex-col gap-2.5">
-              <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-success/12">
+              <span className="flex h-9 w-9 items-center justify-center rounded-[4px] border border-verdigris/35 bg-verdigris/10">
                 <t.icon size={16} className="text-success" />
               </span>
-              <h3 className="text-[15px] font-semibold text-text">{t.title}</h3>
+              <h3 className="font-display text-[15px] font-semibold text-text">{t.title}</h3>
               <p className="body-sm !text-[13px]">{t.body}</p>
             </PanelGlass>
           ))}

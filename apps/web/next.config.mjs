@@ -6,9 +6,14 @@
 //   no built-in nonce for the app router without a custom server).
 // - The only network dependency is the same-origin 8004scan proxy; the browser
 //   never talks to 8004scan.io directly, so connect-src stays 'self'.
+// - Dev only: Next's react-refresh/HMR runtime evaluates strings, so dev needs
+//   'unsafe-eval' in script-src or the client bundle never initializes (pages
+//   stay frozen on their server-rendered shell). Production stays strict.
+const isDev = process.env.NODE_ENV === "development";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",

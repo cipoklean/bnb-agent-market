@@ -2,20 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The Gilded Grimoire — obsidian and candlelight. Tokens only; no one-off hex
+   values at call sites. Deep accents (bronze/verdigris/ember) are for borders
+   and fills; the -text tints keep small text at WCAG AA on umber and ink. */
 @layer base {
   :root {
-    --bg: #0B0E14;
-    --surface: #121826;
-    --surface-2: #1A2233;
-    --border: #263043;
-    --text: #F5F7FA;
-    --muted: #98A2B3;
-    --primary: #F0B90B;
-    --primary-contrast: #0B0E14;
-    --success: #2EBD85;
-    --warning: #F59E0B;
-    --danger: #EF4444;
-    --info: #6C8CFF;
+    --bg: #100D0A;            /* ink — warm near-black */
+    --surface: #241C15;       /* umber — panel surface */
+    --surface-2: #2C221A;     /* umber, one step up */
+    --border: #A9720C;        /* bronze hairline */
+    --text: #EDE3CC;          /* parchment */
+    --muted: #B5A98E;         /* parchment, muted */
+    --primary: #F0B90B;       /* gold — BNB brand */
+    --primary-contrast: #100D0A;
+    --success: #5FA07E;       /* verdigris, text-safe tint of #4E8C6E */
+    --warning: #E0855F;       /* ember, text-safe tint of #B84A2E */
+    --danger: #E0855F;
+    --info: #C89B55;          /* brass — informational accent */
   }
 
   html {
@@ -24,153 +27,149 @@
   }
   body {
     @apply min-h-screen;
+    /* Candlelight: two faint warm pools, nothing looping. */
     background:
-      radial-gradient(1200px 600px at 85% -10%, rgba(240, 185, 11, 0.05), transparent 60%),
-      radial-gradient(900px 500px at -10% 20%, rgba(108, 140, 255, 0.05), transparent 60%),
+      radial-gradient(1100px 520px at 82% -12%, rgba(240, 185, 11, 0.055), transparent 60%),
+      radial-gradient(820px 420px at -12% 22%, rgba(169, 114, 12, 0.05), transparent 60%),
       var(--bg);
   }
 
   ::selection { background: rgba(240, 185, 11, 0.3); }
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: var(--surface); }
-  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  ::-webkit-scrollbar-thumb { background: rgba(169, 114, 12, 0.55); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
 }
 
 @layer components {
-  /* Surfaces — one unified card system: 1px #263043 border, same radius,
-     same padding scale, same hover lift. */
+  /* Surfaces — umber panels framed by a 1px bronze hairline. No grey drop
+     shadows; structure comes from the frame, warmth from the candlelight. */
   .panel {
-    @apply bg-surface/80 border border-border rounded-card backdrop-blur-sm shadow-panel-soft transition-all duration-200;
+    @apply bg-surface/80 border border-border/70 rounded-card backdrop-blur-sm transition-colors duration-200;
   }
   .panel-glass {
-    @apply bg-surface/55 border border-border rounded-card backdrop-blur-md shadow-panel transition-all duration-200;
+    @apply bg-surface/55 border border-border/70 rounded-card backdrop-blur-md transition-colors duration-200;
   }
   .card {
-    @apply bg-surface/80 border border-border rounded-card p-5 transition-all duration-200;
+    @apply bg-surface/80 border border-border/70 rounded-card p-5 transition-colors duration-200;
   }
   .card-hover {
-    @apply hover:border-primary/40 hover:bg-surface-2/70 hover:-translate-y-0.5;
+    @apply hover:border-gold/60;
   }
   .empty-cta {
-    @apply flex flex-col items-center gap-3 rounded-card border border-dashed border-border bg-surface/40 px-6 py-10 text-center;
+    @apply flex flex-col items-center gap-3 rounded-card border border-dashed border-border/50 bg-surface/40 px-6 py-10 text-center;
   }
 
-  /* Text helpers */
+  /* Text helpers — display serif carries the ledger voice; body stays Plex
+     Sans; mono is reserved for on-chain data only. No all-caps labels. */
   .label {
-    @apply font-mono text-[10px] uppercase tracking-[0.14em] text-muted;
+    @apply text-[12px] font-medium text-muted;
   }
-  .title-page { @apply text-[28px] font-semibold tracking-tight text-text; }
-  .title-section { @apply text-[20px] font-semibold tracking-tight text-text; }
-  .title-card { @apply text-[16px] font-semibold text-text; }
+  .title-page { @apply font-display text-[28px] font-semibold tracking-tight text-text; }
+  .title-section { @apply font-display text-[20px] font-semibold tracking-tight text-text; }
+  .title-card { @apply font-display text-[16px] font-semibold text-text; }
   .body-sm { @apply text-[14px] text-muted leading-relaxed; }
   .caption { @apply text-[12px] text-muted; }
   .tnum { @apply font-mono tabular-nums; }
 
-  /* Buttons */
+  /* Buttons — geometrically plain; the sigils never touch the controls. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[14px] font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 disabled:opacity-40 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-[14px] font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-primary text-primary-contrast hover:brightness-110 active:scale-[0.99];
+    @apply btn bg-primary text-primary-contrast hover:bg-gold hover:shadow-glow;
   }
   .btn-ghost {
-    @apply btn bg-transparent text-text border border-border hover:border-muted/50 hover:bg-surface-2/60;
+    @apply btn bg-transparent text-text border border-border/70 hover:border-gold/60 hover:bg-surface-2/60;
   }
   .btn-danger {
-    @apply btn bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20;
+    @apply btn bg-ember/10 text-danger border border-ember/40 hover:bg-ember/20;
   }
   .btn-sm { @apply px-3 py-1.5 text-[13px]; }
 
-  /* Status */
+  /* Status — small-radius badges; verdigris = verified/positive, ember =
+     warning/error, brass = informational. Never color alone: pair with the
+     matching sigil or text. */
   .badge {
-    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[12px] font-medium;
+    @apply inline-flex items-center gap-1.5 rounded-[3px] px-2.5 py-0.5 text-[12px] font-medium;
   }
-  .badge-gold { @apply badge bg-primary/15 text-primary border border-primary/30; }
-  .badge-green { @apply badge bg-success/12 text-success border border-success/25; }
-  .badge-red { @apply badge bg-danger/12 text-danger border border-danger/25; }
-  .badge-amber { @apply badge bg-warning/12 text-warning border border-warning/25; }
-  .badge-blue { @apply badge bg-info/12 text-info border border-info/25; }
-  .badge-gray { @apply badge bg-surface-2 text-muted border border-border; }
+  .badge-gold { @apply badge bg-gold/12 text-gold border border-gold/35; }
+  .badge-green { @apply badge bg-verdigris/12 text-success border border-verdigris/40; }
+  .badge-red { @apply badge bg-ember/10 text-danger border border-ember/40; }
+  .badge-amber { @apply badge bg-ember/10 text-warning border border-ember/40; }
+  .badge-bronze { @apply badge bg-bronze/10 text-info border border-bronze/45; }
+  .badge-gray { @apply badge bg-surface-2 text-muted border border-border/50; }
 
   .dot { @apply inline-block h-1.5 w-1.5 rounded-full; }
-  .dot-green { @apply dot bg-success; }
-  .dot-amber { @apply dot bg-warning; }
-  .dot-red { @apply dot bg-danger; }
-  .dot-blue { @apply dot bg-info; }
+  .dot-green { @apply dot bg-verdigris; }
+  .dot-amber { @apply dot bg-ember; }
+  .dot-red { @apply dot bg-ember; }
+  .dot-blue { @apply dot bg-bronze; }
+
+  /* The live rune-dot — the ONE looping motion in the system. */
+  .rune-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: var(--primary);
+    transform: rotate(45deg);
+    animation: rune-pulse 2.6s ease-in-out infinite;
+  }
 
   /* Inputs */
   .input {
-    @apply w-full rounded-input bg-surface-2/60 border border-border px-3 py-2 text-[14px] text-text placeholder:text-muted/60 focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/40;
+    @apply w-full rounded-input bg-surface-2/60 border border-border/70 px-3 py-2 text-[14px] text-text placeholder:text-muted/60 focus:outline-none focus:border-gold/70 focus:ring-1 focus:ring-gold/50;
   }
   .select { @apply input appearance-none pr-8; }
 
   /* Misc */
   .hash { @apply font-mono text-[12px] text-muted; }
-  .link { @apply text-primary hover:underline cursor-pointer; }
-  .divider { @apply border-t border-border/60; }
+  .link {
+    @apply text-primary hover:underline cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-gold/70 rounded-[3px];
+  }
+  .divider { @apply border-t border-border/40; }
+  .rule-gold { @apply border-t border-gold/30; }
   .glass-bar {
-    @apply bg-surface/70 backdrop-blur-xl border-b border-border/60;
+    @apply bg-ink/80 backdrop-blur-xl border-b border-border/50;
   }
 
-  /* Stagger helper */
-  .stagger > * { animation: fade-in-up .4s ease-out both; }
-  .stagger > *:nth-child(2) { animation-delay: 60ms; }
-  .stagger > *:nth-child(3) { animation-delay: 120ms; }
-  .stagger > *:nth-child(4) { animation-delay: 180ms; }
-  .stagger > *:nth-child(5) { animation-delay: 240ms; }
-  .stagger > *:nth-child(6) { animation-delay: 300ms; }
-
-  /* --- Bold landing --- */
-  /* Gradient gold headline with a slow shimmer sweep. */
-  .text-gradient-gold {
-    background-image: linear-gradient(
-      100deg,
-      #FFE9A8 0%,
-      #F0B90B 30%,
-      #FFF3C4 50%,
-      #F0B90B 70%,
-      #FFE9A8 100%
-    );
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: shimmer 6s linear infinite;
-  }
-  /* Faint blueprint grid layer for the hero backdrop. */
+  /* Hero backdrop — a faint ledger grid in bronze, one static candle glow. */
   .hero-grid {
     background-image:
-      linear-gradient(to right, rgba(38, 48, 67, 0.5) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(38, 48, 67, 0.5) 1px, transparent 1px);
+      linear-gradient(to right, rgba(169, 114, 12, 0.16) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(169, 114, 12, 0.16) 1px, transparent 1px);
     background-size: 44px 44px;
     -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 40%, transparent 100%);
     mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, #000 40%, transparent 100%);
   }
-  /* Soft colored light blob (aurora). Positioned by utilities at call site. */
-  .aurora-blob {
+  .candle-glow {
     position: absolute;
     border-radius: 9999px;
-    filter: blur(60px);
-    will-change: transform, opacity;
-    animation: aurora 14s ease-in-out infinite;
+    filter: blur(70px);
+    background: radial-gradient(circle, rgba(240, 185, 11, 0.14), transparent 70%);
+    pointer-events: none;
   }
-  /* Glow frame around the featured hero card. */
-  .glow-frame {
-    box-shadow: 0 0 0 1px rgba(240,185,11,0.30),
-      0 24px 80px -20px rgba(240,185,11,0.35),
-      0 8px 40px -12px rgba(0,0,0,0.6);
-  }
+
+  /* One-shot gold settle for the hero counters (CountUp applies it once). */
+  .counter-settle { animation: counter-settle 1.4s ease-out both; }
+}
+
+@keyframes rune-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(240, 185, 11, 0); opacity: 0.7; }
+  50% { box-shadow: 0 0 9px 2px rgba(240, 185, 11, 0.4); opacity: 1; }
+}
+
+@keyframes counter-settle {
+  0% { text-shadow: 0 0 18px rgba(240, 185, 11, 0.65); color: var(--primary); }
+  100% { text-shadow: 0 0 0 rgba(240, 185, 11, 0); color: inherit; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .text-gradient-gold,
-  .aurora-blob,
-  .stagger > *,
-  .animate-float,
-  .animate-aurora,
-  .animate-pulse-glow,
-  .animate-shimmer {
+  .rune-dot,
+  .counter-settle,
+  .animate-fade-in-up,
+  .animate-slide-in-right {
     animation: none !important;
   }
+  html { scroll-behavior: auto; }
 }
