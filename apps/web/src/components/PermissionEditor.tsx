@@ -221,7 +221,7 @@ export default function PermissionEditor({
                 type="checkbox"
                 checked={value.permissions.forbidden_actions.includes(a)}
                 onChange={() => toggleForbidden(a)}
-                className="accent-[#EF4444]"
+                className="accent-ember"
               />
               <span className="hash">{a}</span>
             </label>

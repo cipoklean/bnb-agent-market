@@ -1,12 +1,12 @@
-// ScanAgentCard — one entry from the LIVE directory. Only real indexer fields
-// are rendered; no success-rate / job-count inventions. Null or zero metrics
-// render as an honest "fresh agent" line instead of fabricated numbers.
+// ScanAgentCard — one entry from the LIVE directory, styled as a grimoire
+// entry: umber panel, bronze hairline, gold separators, sigil status marks.
+// Only real indexer fields are rendered; no success-rate / job-count
+// inventions. Null or zero metrics render as an honest "fresh agent" line
+// instead of fabricated numbers.
 "use client";
 import Link from "next/link";
 import {
   Activity,
-  Check,
-  ExternalLink,
   GitCompare,
   MessageSquare,
   Star,
@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import type { LiveAgentView } from "@/lib/scan-normalize";
 import { CATEGORY_META } from "@/lib/categories";
 import { useCompare } from "@/lib/compare-store";
+import { SigilLive, SigilSeal, SigilSep } from "@/components/sigils";
 
 function Metric({
   label,
@@ -30,8 +31,8 @@ function Metric({
   tone?: "default" | "gold";
 }) {
   return (
-    <div className="rounded-btn border border-border bg-surface-2/40 p-3">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted">
+    <div className="rounded-btn border border-border/60 bg-surface-2/40 p-3">
+      <div className="flex items-center gap-1.5 text-[11px] text-muted">
         {icon}
         {label}
       </div>
@@ -66,22 +67,30 @@ export default function ScanAgentCard({
   return (
     <Link
       href={`/agents/${view.slug}`}
-      className="group relative flex flex-col gap-3 rounded-btn border border-border bg-surface-2/40 p-4 transition-colors hover:border-primary/40"
+      className="group relative flex flex-col gap-3 rounded-card border border-border/70 bg-surface-2/40 p-4 transition-colors duration-200 hover:border-gold/60"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-[15px] font-semibold text-text group-hover:text-primary">
+          <h3 className="truncate font-display text-[16px] font-semibold text-text group-hover:text-gold">
             {view.name}
           </h3>
-          <p className="caption mt-0.5">
-            #{view.tokenId} · {view.canonicalId ? view.canonicalId.slice(0, 10) : ""}…
-            ·{" "}
-            {view.owner
-              ? `${view.owner.slice(0, 6)}…${view.owner.slice(-4)}`
-              : "owner unknown"}
+          <p className="caption mt-0.5 flex flex-wrap items-center">
+            <span className="tnum">#{view.tokenId}</span>
+            {view.canonicalId && (
+              <>
+                <SigilSep />
+                <span className="hash">{view.canonicalId.slice(0, 10)}…</span>
+              </>
+            )}
+            <SigilSep />
+            <span className="hash">
+              {view.owner
+                ? `${view.owner.slice(0, 6)}…${view.owner.slice(-4)}`
+                : "owner unknown"}
+            </span>
           </p>
         </div>
-        <span className="badge-blue shrink-0">ERC-8004</span>
+        <span className="badge-bronze shrink-0">ERC-8004</span>
       </div>
 
       {view.description && (
@@ -106,7 +115,7 @@ export default function ScanAgentCard({
         )}
         {fromIndexer && view.verified && (
           <span className="badge-green">
-            <Check size={12} /> Verified
+            <SigilSeal size={12} className="text-success" /> Verified
           </span>
         )}
         {fromIndexer && view.x402Supported && (
@@ -114,19 +123,19 @@ export default function ScanAgentCard({
         )}
         {!fromIndexer && (
           <span className="badge-green">
-            <Check size={12} /> Verified via 8004scan
+            <SigilSeal size={12} className="text-success" /> Verified via 8004scan
           </span>
         )}
         <span
-          className={`badge-gray ${fromIndexer ? "" : "!border-amber/30 !text-warning"}`}
+          className={`badge-gray ${fromIndexer ? "" : "!border-ember/40 !text-warning"}`}
         >
-          {fromIndexer ? "indexed · live" : "submitted locally"}
+          {fromIndexer ? <SigilLive label="Live" /> : "submitted locally"}
         </span>
       </div>
 
       {fromIndexer ? (
         fresh ? (
-          <p className="rounded-btn border border-border bg-bg/50 px-3 py-2.5 text-[12px] text-muted">
+          <p className="rounded-btn border border-border/60 bg-ink/40 px-3 py-2.5 text-[12px] text-muted">
             Fresh agent — no feedback yet. Scores populate as usage accrues.
           </p>
         ) : (
@@ -153,14 +162,14 @@ export default function ScanAgentCard({
           </div>
         )
       ) : (
-        <p className="rounded-btn border border-border bg-bg/50 px-3 py-2.5 text-[12px] text-muted">
+        <p className="rounded-btn border border-border/60 bg-ink/40 px-3 py-2.5 text-[12px] text-muted">
           Identity verified via 8004scan at listing — no indexer metrics yet.
         </p>
       )}
 
       <div className="mt-auto flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 text-[12px] text-primary">
-          Details <ExternalLink size={12} />
+        <span className="inline-flex items-center gap-1 text-[12px] text-gold">
+          Details
         </span>
         {selectable ? (
           <button
@@ -178,19 +187,19 @@ export default function ScanAgentCard({
               e.stopPropagation();
               if (!disabled) toggle(view);
             }}
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+            className={`inline-flex items-center gap-1 rounded-btn border px-2.5 py-1 text-[11px] font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-gold/70 ${
               selected
-                ? "border-primary/50 bg-primary/15 text-primary"
+                ? "border-gold/60 bg-gold/15 text-gold"
                 : disabled
-                  ? "cursor-not-allowed border-border bg-surface-2/60 text-muted/50"
-                  : "border-border bg-surface-2/60 text-muted hover:text-text"
+                  ? "cursor-not-allowed border-border/60 bg-surface-2/60 text-muted/50"
+                  : "border-border/60 bg-surface-2/60 text-muted hover:border-gold/50 hover:text-text"
             }`}
           >
             <GitCompare size={11} />
             {selected ? "Added" : "Compare"}
           </button>
         ) : (
-          <span className="caption">View on 8004scan ↗</span>
+          <span className="caption">View on 8004scan</span>
         )}
       </div>
     </Link>

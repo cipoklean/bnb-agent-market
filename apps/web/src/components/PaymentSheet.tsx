@@ -95,7 +95,7 @@ export default function PaymentSheet({
         ) : reviewOnly ? (
           <span className="badge-gray">Included in session</span>
         ) : (
-          <span className="badge-blue">Awaiting approval</span>
+          <span className="badge-bronze">Awaiting approval</span>
         )}
       </div>
 

@@ -4,7 +4,6 @@
 import Link from "next/link";
 import {
   ArrowLeft,
-  ArrowRight,
   BarChart3,
   Check,
   FileText,
@@ -64,7 +63,7 @@ export default async function TaskChainPage() {
           reporting — scoped to your session terms with a strict allowlist.
         </p>
         <Link href="/marketplace" className="btn-primary mt-6">
-          Browse the live directory <ArrowRight size={15} />
+          Browse the live directory
         </Link>
       </section>
 
@@ -119,7 +118,7 @@ export default async function TaskChainPage() {
         </PanelGlass>
         <PanelGlass className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <ArrowRight size={15} className="text-primary" />
+            <Shield size={15} className="text-gold" />
             <h3 className="title-card">Every session is yours to stop</h3>
           </div>
           <p className="body-sm">

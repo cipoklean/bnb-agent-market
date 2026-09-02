@@ -36,11 +36,11 @@ import { classifyManifestHash, type ManifestHashStatus } from "@/lib/memory";
 import type { SessionManifest, SessionStatus } from "@/lib/types";
 
 const STATUS_LABEL: Record<SessionStatus, { cls: string; label: string }> = {
-  draft: { cls: "badge-blue", label: "Draft" },
+  draft: { cls: "badge-bronze", label: "Draft" },
   pending_confirmation: { cls: "badge-amber", label: "Waiting for you" },
   active: { cls: "badge-green", label: "Active" },
   paused: { cls: "badge-gray", label: "Paused" },
-  completed: { cls: "badge-blue", label: "Completed" },
+  completed: { cls: "badge-bronze", label: "Completed" },
   revoked: { cls: "badge-red", label: "Stopped" },
   expired: { cls: "badge-gray", label: "Expired" },
 };

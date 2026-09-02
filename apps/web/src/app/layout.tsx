@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import SiteHeader from "@/components/SiteHeader";
+import { SigilLive, SigilSep } from "@/components/sigils";
 import "./globals.css";
 
 const ibmSans = IBM_Plex_Sans({
@@ -13,6 +14,13 @@ const ibmMono = IBM_Plex_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
   weight: ["400", "500"],
+});
+
+// Display serif — the ledger voice. Headlines only, never body or data.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -47,14 +55,19 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${ibmSans.variable} ${ibmMono.variable}`}>
+    <html
+      lang="en"
+      className={`${ibmSans.variable} ${ibmMono.variable} ${fraunces.variable}`}
+    >
       <body className="flex min-h-screen flex-col">
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">{children}</main>
-        <footer className="border-t border-border/50 py-6">
+        <footer className="rule-gold py-6">
           <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-4 text-[12px] text-muted sm:flex-row sm:px-6">
-            <div>
-              Built for the Smart Money Era · Data live from{" "}
+            <div className="flex flex-wrap items-center">
+              Built for the Smart Money Era
+              <SigilSep />
+              Data live from{" "}
               <a
                 href="https://8004scan.io"
                 target="_blank"
@@ -62,12 +75,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 className="link"
               >
                 8004scan
-              </a>{" "}
-              · Registry <span className="hash">0x8004…432</span>
+              </a>
+              <SigilSep />
+              Registry <span className="hash">0x8004…432</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="dot dot-green" /> Live ERC-8004 directory
-            </div>
+            <SigilLive label="Live ERC-8004 directory" />
           </div>
         </footer>
       </body>

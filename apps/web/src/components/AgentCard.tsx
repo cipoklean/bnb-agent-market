@@ -12,7 +12,7 @@ export default function AgentCard({ agent }: { agent: Agent }) {
     <div className="card card-hover flex flex-col gap-4">
       <Link href={`/agents/${agent.id}`} className="group block">
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="badge-blue">{agent.category}</span>
+          <span className="badge-bronze">{agent.category}</span>
           <Tooltip label="On-chain proof of this agent's history.">
             <span className="badge-gold !cursor-help">ERC-8004</span>
           </Tooltip>

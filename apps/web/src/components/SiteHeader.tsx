@@ -6,10 +6,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, Menu, Wallet, X, Hexagon } from "lucide-react";
+import { ExternalLink, Menu, Wallet, X } from "lucide-react";
 import { useMarket, initWalletSync } from "@/lib/store";
 import { truncateAddress } from "@/lib/format";
 import { walletAvailable, isWalletError, type WalletError } from "@/lib/wallet";
+import { SigilMark } from "@/components/sigils";
 
 const NAV = [
   { href: "/marketplace", label: "Marketplace" },
@@ -87,14 +88,14 @@ export default function SiteHeader() {
     <header className="glass-bar sticky top-0 z-50">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
-          <span className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-primary/40 bg-primary/10">
-            <Hexagon size={18} className="text-primary" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-[4px] border border-bronze/50 bg-gold/8">
+            <SigilMark size={19} className="text-gold" />
           </span>
           <span className="leading-tight">
-            <span className="block text-[15px] font-semibold tracking-tight">
+            <span className="font-display block text-[17px] font-semibold tracking-tight">
               BNB Agent Market
             </span>
-            <span className="hidden text-[10px] uppercase tracking-[0.18em] text-muted sm:block">
+            <span className="hidden text-[11px] text-muted sm:block">
               BSC&apos;s AI agent front door
             </span>
           </span>

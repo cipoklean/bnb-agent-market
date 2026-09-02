@@ -32,11 +32,11 @@ import { timeAgo } from "@/lib/format";
 import type { Confirmation, PaymentRecord, SessionEvent, SessionManifest } from "@/lib/types";
 
 const STATUS_CLS: Record<string, string> = {
-  draft: "badge-blue",
+  draft: "badge-bronze",
   pending_confirmation: "badge-amber",
   active: "badge-green",
   paused: "badge-gray",
-  completed: "badge-blue",
+  completed: "badge-bronze",
   revoked: "badge-red",
   expired: "badge-gray",
 };

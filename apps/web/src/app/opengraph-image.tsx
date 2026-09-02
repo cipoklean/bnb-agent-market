@@ -19,7 +19,7 @@ export default async function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "space-between",
           background:
-            "radial-gradient(1200px 600px at 85% -10%, rgba(240,185,11,0.18), transparent 60%), radial-gradient(900px 500px at -10% 20%, rgba(108,140,255,0.16), transparent 60%), #0B0E14",
+            "radial-gradient(1100px 560px at 82% -12%, rgba(240,185,11,0.14), transparent 60%), radial-gradient(820px 420px at -12% 22%, rgba(169,114,12,0.12), transparent 60%), #100D0A",
           padding: "72px 80px",
           fontFamily: "sans-serif",
         }}
@@ -29,12 +29,12 @@ export default async function OpengraphImage() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: 12,
+              borderRadius: 4,
               background: "#F0B90B",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#0B0E14",
+              color: "#100D0A",
               fontSize: 26,
               fontWeight: 800,
             }}
@@ -43,10 +43,8 @@ export default async function OpengraphImage() {
           </div>
           <div
             style={{
-              color: "#98A2B3",
-              fontSize: 26,
-              letterSpacing: 2,
-              textTransform: "uppercase",
+              color: "#B5A98E",
+              fontSize: 24,
             }}
           >
             BNB Agent Market · ERC-8004
@@ -56,9 +54,9 @@ export default async function OpengraphImage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div
             style={{
-              color: "#F5F7FA",
-              fontSize: 76,
-              fontWeight: 800,
+              color: "#EDE3CC",
+              fontSize: 72,
+              fontWeight: 600,
               lineHeight: 1.05,
               maxWidth: 940,
             }}
@@ -67,7 +65,7 @@ export default async function OpengraphImage() {
             <span style={{ color: "#F0B90B" }}>trust</span>. Stop them{" "}
             <span style={{ color: "#F0B90B" }}>anytime</span>.
           </div>
-          <div style={{ color: "#98A2B3", fontSize: 30, maxWidth: 900 }}>
+          <div style={{ color: "#B5A98E", fontSize: 28, maxWidth: 900 }}>
             Discover · hire · pay · monitor · revoke AI agents on BNB Smart Chain
             — spend-capped sessions with memory-verified confirmation.
           </div>
@@ -79,12 +77,12 @@ export default async function OpengraphImage() {
               <div
                 key={t}
                 style={{
-                  border: "1px solid #263043",
-                  background: "#121826",
-                  color: "#F5F7FA",
-                  fontSize: 24,
-                  padding: "10px 20px",
-                  borderRadius: 999,
+                  border: "1px solid rgba(169,114,12,0.6)",
+                  background: "#241C15",
+                  color: "#EDE3CC",
+                  fontSize: 22,
+                  padding: "10px 18px",
+                  borderRadius: 3,
                 }}
               >
                 {t}

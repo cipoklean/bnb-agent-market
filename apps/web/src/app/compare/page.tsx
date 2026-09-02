@@ -12,6 +12,7 @@ import { useCompare } from "@/lib/compare-store";
 import { CATEGORY_META } from "@/lib/categories";
 import { scanUrlFor, type LiveAgentView } from "@/lib/scan-normalize";
 import { EmptyState, SectionTitle } from "@/components/ui";
+import { SigilLive } from "@/components/sigils";
 
 type RowValue = { node: ReactNode; muted?: boolean };
 
@@ -48,7 +49,7 @@ function agentRows(v: LiveAgentView): Record<string, RowValue> {
       ),
     },
     Status: live
-      ? { node: <span className="inline-flex items-center gap-1.5 text-success"><span className="dot dot-green" /> Live · indexed</span> }
+      ? { node: <span className="inline-flex items-center gap-1.5 text-success"><SigilLive label="Live · indexed" /></span> }
       : { node: <span className="text-warning">Submitted locally · verified via 8004scan</span> },
     Performance: fresh
       ? { node: <span className="text-muted/60">Fresh agent — no feedback yet</span>, muted: true }
@@ -131,9 +132,9 @@ export default function ComparePage() {
               <th className="sticky left-0 z-10 w-40 bg-bg p-3 text-left align-bottom" />
               {items.map((v) => (
                 <th key={v.slug} className="min-w-[220px] p-3 align-bottom">
-                  <div className="flex flex-col gap-2 rounded-btn border border-border bg-surface-2/40 p-3 text-left">
+                  <div className="flex flex-col gap-2 rounded-btn border border-border/60 bg-surface-2/40 p-3 text-left">
                     <div className="flex items-start justify-between gap-2">
-                      <span className="badge-blue">ERC-8004</span>
+                      <span className="badge-bronze">ERC-8004</span>
                       <button
                         aria-label={`Remove ${v.name}`}
                         onClick={() => remove(v.slug)}
@@ -158,7 +159,7 @@ export default function ComparePage() {
                           rel="noreferrer"
                           className="btn-ghost btn-sm flex-1 justify-center"
                         >
-                          8004scan ↗
+                          8004scan
                         </a>
                       </div>
                     </div>
@@ -170,7 +171,7 @@ export default function ComparePage() {
           <tbody>
             {ROW_ORDER.map((label, i) => (
               <tr key={label} className={i % 2 === 0 ? "bg-surface/20" : ""}>
-                <td className="sticky left-0 z-10 bg-bg p-3 align-top text-[12px] font-medium uppercase tracking-wide text-muted">
+                <td className="sticky left-0 z-10 bg-bg p-3 align-top text-[12px] font-medium text-muted">
                   {label}
                 </td>
                 {rowsByAgent.map((rows, idx) => (
